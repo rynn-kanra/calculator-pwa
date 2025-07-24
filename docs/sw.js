@@ -1,12 +1,12 @@
 const CACHE_NAME = 'preact-calculator-cache-v1';
 const FILES_TO_CACHE = [
-  '/',
-  '/manifest.json',
-  '/assets/images/icon.png',
-  '/sw.js',
-  '/index.js',
-  '/assets/click-in.mp3',
-  '/index.css',
+  '',
+  'manifest.json',
+  'assets/images/icon.png',
+  'sw.js',
+  'index.js',
+  'assets/click-in.mp3',
+  'index.css',
 ];
 
 self.addEventListener('install', (event) => {
