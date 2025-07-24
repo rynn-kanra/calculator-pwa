@@ -1,0 +1,17 @@
+{
+  "name": "calculator",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/web-bluetooth": "^0.0.21"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "preact": "^10.26.9"
+  }
+}

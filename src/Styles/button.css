@@ -1,0 +1,29 @@
+.press-button {
+    background: #fff;
+    transition: all 0.05s ease-in-out;
+}
+
+.press-button:active {
+    background: #eee;
+}
+.press-button:focus-visible {
+    outline: none;
+}
+
+.result-container::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari */
+}
+div:focus {
+    outline: none;
+}
+html,
+body {
+    margin: 0;
+    padding: 0;
+    touch-action: manipulation;
+    user-select: none;
+    user-zoom: initial;
+    height: 100dvh;
+    overflow: hidden;
+}

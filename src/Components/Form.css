@@ -1,0 +1,60 @@
+.form {
+  box-sizing: border-box;
+  border-width: 0 0 1px 0;
+  background-color: transparent;
+  width: 100%;
+  font-size: 1rem;
+}
+
+.form[type="number"] {
+  text-align: right;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  background-color: #ccc;
+  border-radius: 34px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: 0.4s;
+}
+
+.slider:before {
+  content: "";
+  height: 14px;
+  width: 14px;
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.4s;
+}
+
+input:checked+.slider {
+  background-color: #4caf50;
+}
+
+input:checked+.slider:before {
+  transform: translateX(20px);
+}
+
+.input-container {
+  text-align: right;
+}
