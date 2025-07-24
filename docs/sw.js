@@ -1,6 +1,6 @@
 const CACHE_NAME = 'preact-calculator-cache-v1';
 const FILES_TO_CACHE = [
-  '',
+  'index.html',
   'manifest.json',
   'assets/images/icon.png',
   'sw.js',
