@@ -559,7 +559,7 @@ export function Calculator() {
   useEffect(() => {
     inAudioCtxRef.current = new AudioContext();
 
-    fetch('/assets/audio/click-in.mp3')
+    fetch('assets/audio/click-in.mp3')
       .then((res) => res.arrayBuffer())
       .then((arrayBuffer) => inAudioCtxRef.current!.decodeAudioData(arrayBuffer))
       .then((decoded) => {

@@ -2235,7 +2235,7 @@ function Calculator() {
   ];
   y2(() => {
     inAudioCtxRef.current = new AudioContext;
-    fetch("/assets/audio/click-in.mp3").then((res) => res.arrayBuffer()).then((arrayBuffer) => inAudioCtxRef.current.decodeAudioData(arrayBuffer)).then((decoded) => {
+    fetch("assets/audio/click-in.mp3").then((res) => res.arrayBuffer()).then((arrayBuffer) => inAudioCtxRef.current.decodeAudioData(arrayBuffer)).then((decoded) => {
       inBufferRef.current = decoded;
     });
   }, []);

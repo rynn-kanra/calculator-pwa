@@ -5,7 +5,7 @@ const FILES_TO_CACHE = [
   'assets/images/icon.png',
   'sw.js',
   'index.js',
-  'assets/click-in.mp3',
+  'assets/audio/click-in.mp3',
   'index.css',
 ];
 
