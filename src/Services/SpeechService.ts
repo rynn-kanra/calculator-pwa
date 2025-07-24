@@ -69,7 +69,7 @@ class SpeechService {
         return new Promise((r, e) => {
             try {
                 this._recognition!.onresult = (event) => {
-                    alert(event.results[event.results.length - 1][0].transcript);
+                    console.log(event.results[event.results.length - 1][0].transcript);
                     result = event.results;
                 };
 
@@ -92,7 +92,7 @@ class SpeechService {
                             final = Array.from(result)
                                 .map(o => o[0].transcript)
                                 .join(" ");
-                            alert(Array.from(result)
+                            console.log(Array.from(result)
                                 .map(o => `[${o[0].confidence}]${o[0].transcript}`)
                                 .join("\n"))
                         }

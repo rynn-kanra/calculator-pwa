@@ -1077,6 +1077,7 @@ var normalizeMap = new Map([
   [/tujoh/g, "tujuh"],
   [/lapan/g, "delapan"],
   [/persen/g, "%"],
+  [/([^0-9.])1\/2(?![0-9.])/g, "$1setengah"],
   [/(sama dengan|berapa|hasil|brapa)/g, "="]
 ]);
 function isNumber(n2) {
@@ -1108,13 +1109,18 @@ function MathParser(input) {
       continue;
     }
     if (isNumber(word)) {
+      total += hundred + num;
+      if (total != 0) {
+        res.push(total.toFixed(10).replace(/[.]?0+$/, ""));
+      }
       res.push(word);
+      total = hundred = num = 0;
       continue;
     }
     if (isOperator(word)) {
       total += hundred + num;
       if (total != 0) {
-        res.push(total.toFixed(0));
+        res.push(total.toFixed(10).replace(/[.]?0+$/, ""));
       }
       res.push(word);
       isComa = false;
@@ -1140,12 +1146,15 @@ function MathParser(input) {
       default: {
         if (num == 0) {
           total += hundred + num;
+          if (total === 0) {
+            total = Number(res[res.length - 1]);
+          }
           total = d3(total);
           hundred = 0;
         } else {
           const chunk = d3(num);
           if (hundred > 0 && chunk.toFixed(0).length >= hundred.toFixed(0).length) {
-            res.push((total + hundred).toFixed(0));
+            res.push((total + hundred).toFixed(10).replace(/[.]?0+$/, ""));
             total = 0;
           } else {
             hundred += chunk;
@@ -1164,7 +1173,7 @@ function MathParser(input) {
   } else {
     total += hundred + num;
     if (total != 0) {
-      res.push(total.toFixed(0));
+      res.push(total.toFixed(10).replace(/[.]?0+$/, ""));
     }
   }
   return res;
@@ -1173,17 +1182,38 @@ function CalcParser(input) {
   const tokens = MathParser(input);
   let result2 = "";
   let isPrevNumber = false;
+  let skipThousand = false;
   for (const token of tokens) {
     if (isNumber(token)) {
       if (isPrevNumber) {
         result2 += "+";
+        skipThousand = false;
       }
-      result2 += token;
+      let num = Number(token);
+      if (!skipThousand && num < 999) {
+        num *= 1000;
+        result2 += num.toFixed(10).replace(/[.]?0+$/, "");
+      } else {
+        result2 += token;
+      }
       isPrevNumber = true;
     } else {
       result2 += token;
+      switch (token) {
+        case "*":
+        case "/": {
+          skipThousand = true;
+          break;
+        }
+        default: {
+          skipThousand = false;
+        }
+      }
       isPrevNumber = false;
     }
+  }
+  if (isNumber(result2[result2.length - 1])) {
+    result2 += "+";
   }
   return result2;
 }
@@ -1312,7 +1342,7 @@ class SpeechService {
     return new Promise((r4, e3) => {
       try {
         this._recognition.onresult = (event) => {
-          alert(event.results[event.results.length - 1][0].transcript);
+          console.log(event.results[event.results.length - 1][0].transcript);
           result2 = event.results;
         };
         this._recognition.onerror = (event) => {
@@ -1330,7 +1360,7 @@ class SpeechService {
             let final = "";
             if (result2) {
               final = Array.from(result2).map((o3) => o3[0].transcript).join(" ");
-              alert(Array.from(result2).map((o3) => `[${o3[0].confidence}]${o3[0].transcript}`).join(`
+              console.log(Array.from(result2).map((o3) => `[${o3[0].confidence}]${o3[0].transcript}`).join(`
 `));
             }
             r4(final);
@@ -2540,7 +2570,6 @@ function Calculator() {
           }
           setting = set;
           openSetting(false);
-          debugger;
           listenKeyboard = true;
         }
       }, undefined, false, undefined, this),
@@ -2566,4 +2595,5 @@ function App() {
 }
 
 // src/index.ts
+window.matht = CalcParser;
 E(_(App, null), document.getElementById("app"));

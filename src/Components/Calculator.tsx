@@ -849,7 +849,6 @@ export function Calculator() {
         }
         setting = set;
         openSetting(false);
-        debugger;
         listenKeyboard = true;
       }} />
       {/* Listening Popup */}

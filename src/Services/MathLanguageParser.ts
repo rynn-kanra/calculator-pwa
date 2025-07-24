@@ -44,6 +44,7 @@ const normalizeMap: Map<RegExp, string> = new Map([
     [/tujoh/g, "tujuh"],
     [/lapan/g, "delapan"],
     [/persen/g, "%"],
+    [/([^0-9.])1\/2(?![0-9.])/g, "$1setengah"],
     [/(sama dengan|berapa|hasil|brapa)/g, "="]
 ]);
 function isNumber(n: string) {
@@ -76,14 +77,20 @@ export function MathParser(input: string) {
         }
 
         if (isNumber(word)) {
+            total += hundred + num;
+            if (total != 0) {
+                res.push(total.toFixed(10).replace(/[.]?0+$/, ''));
+            }
+
             res.push(word);
+            total = hundred = num = 0;
             continue;
         }
 
         if (isOperator(word)) {
             total += hundred + num;
             if (total != 0) {
-                res.push(total.toFixed(0));
+                res.push(total.toFixed(10).replace(/[.]?0+$/, ''));
             }
             res.push(word);
             isComa = false;
@@ -112,13 +119,16 @@ export function MathParser(input: string) {
             default: {
                 if (num == 0) {
                     total += hundred + num;
+                    if (total === 0) {
+                        total = Number(res[res.length - 1]);
+                    }
                     total = d(total);
                     hundred = 0;
                 }
                 else {
                     const chunk = d(num);
                     if (hundred > 0 && chunk.toFixed(0).length >= hundred.toFixed(0).length) {
-                        res.push((total + hundred).toFixed(0));
+                        res.push((total + hundred).toFixed(10).replace(/[.]?0+$/, ''));
                         total = 0;
                     }
                     else {
@@ -139,7 +149,7 @@ export function MathParser(input: string) {
     else {
         total += hundred + num;
         if (total != 0) {
-            res.push(total.toFixed(0));
+            res.push(total.toFixed(10).replace(/[.]?0+$/, ''));
         }
     }
 
@@ -149,18 +159,42 @@ export function CalcParser(input: string) {
     const tokens = MathParser(input);
     let result = "";
     let isPrevNumber = false;
+    let skipThousand = false;
     for (const token of tokens) {
         if (isNumber(token)) {
             if (isPrevNumber) {
                 result += "+";
+                skipThousand = false;
             }
-            result += token;
+            let num = Number(token);
+            if (!skipThousand && num < 999) {
+                // TODO: detect bagi dan kali. cuma 1 angk
+                num *= 1000;
+                result += num.toFixed(10).replace(/[.]?0+$/, '');
+            }
+            else {
+                result += token;
+            }
             isPrevNumber = true;
         }
         else {
             result += token;
+            switch (token) {
+                case "*":
+                case "/": {
+                    skipThousand = true;
+                    break;
+                }
+                default: {
+                    skipThousand = false;
+                }
+            }
             isPrevNumber = false;
         }
+    }
+
+    if (isNumber(result[result.length - 1])) {
+        result += "+";
     }
 
     return result;
