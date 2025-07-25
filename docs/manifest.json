@@ -2,14 +2,14 @@
   "name": "Printer Calculator",
   "short_name": "PrintCalc",
   "start_url": ".",
-  "id": "/",
+  "id": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "assets/images/icon.png",
+      "src": "./assets/images/icon.png",
       "sizes": "474x474",
       "type": "image/png"
     }
