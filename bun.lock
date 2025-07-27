@@ -6,6 +6,7 @@
       "dependencies": {
         "html2canvas": "^1.4.1",
         "preact": "^10.26.9",
+        "vosk-browser": "^0.0.8",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -44,5 +45,7 @@
     "undici-types": ["undici-types@7.8.0", "", {}, "sha512-9UJ2xGDvQ43tYyVMpuHlsgApydB8ZKfVYTsLDhXkFL/6gfkp+U8xTGdh8pMJv1SpZna0zxG1DwsKZsreLbXBxw=="],
 
     "utrie": ["utrie@1.0.2", "", { "dependencies": { "base64-arraybuffer": "^1.0.2" } }, "sha512-1MLa5ouZiOmQzUbjbu9VmjLzn1QLXBhwpUa7kdLUQK+KQ5KA9I1vk5U4YHe/X2Ch7PYnJfWuWT+VbuxbGwljhw=="],
+
+    "vosk-browser": ["vosk-browser@0.0.8", "", { "dependencies": { "uuid": "9.0.0" } }, "sha512-df9MuChirUGKxP/+4k8tBV6hJOic8IRdJXv64+ET0Ue5CddOzLZINiHOWCka765gBzHJWNtQKgaYakS0FXZIJA=="],
   }
 }
