@@ -1564,7 +1564,7 @@ function SettingPopup(setting) {
                 name: "max-digit",
                 step: "1",
                 min: "6",
-                max: "50",
+                max: "15",
                 value: data.maxDigit,
                 onInput: (e3) => {
                   data.maxDigit = parseInt(e3.target.value);
