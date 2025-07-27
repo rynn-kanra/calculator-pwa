@@ -1057,9 +1057,9 @@ var map = {
   belas: (n2) => n2 + 10,
   ratus: (n2) => n2 * 100,
   ribu: (n2) => n2 * 1000,
-  juta: (n2) => n2 * 10 ^ 6,
-  miliar: (n2) => n2 * 10 ^ 9,
-  triliun: (n2) => n2 * 10 ^ 12
+  juta: (n2) => n2 * 1e6,
+  miliar: (n2) => n2 * 1e9,
+  triliun: (n2) => n2 * 1000000000000
 };
 var normalizeMap = new Map([
   [/[.]/g, ""],
@@ -1077,7 +1077,7 @@ var normalizeMap = new Map([
   [/tujoh/g, "tujuh"],
   [/lapan/g, "delapan"],
   [/persen/g, "%"],
-  [/([^0-9.])1\/2(?![0-9.])/g, "$1setengah"],
+  [/([^0-9.]|^)1\/2(?![0-9.])/g, "$1setengah"],
   [/(sama dengan|berapa|hasil|brapa)/g, "="]
 ]);
 function isNumber(n2) {
@@ -1137,7 +1137,19 @@ function MathParser(input) {
             res[res.length - 1] += num;
           }
         }
-        num = d3;
+        if (num == 0) {
+          num = d3;
+        } else if (num == 1 || !Number.isInteger(num)) {
+          res.push((total + hundred + num).toFixed(10).replace(/[.]?0+$/, ""));
+          total = hundred = 0;
+          num = d3;
+        } else if (total + hundred == 0) {
+          hundred = num * 10;
+          num = d3;
+        } else {
+          res.push((total + hundred + num).toFixed(10).replace(/[.]?0+$/, ""));
+          total = hundred = 0;
+        }
         break;
       }
       case "undefined": {
@@ -1146,22 +1158,33 @@ function MathParser(input) {
       default: {
         if (num == 0) {
           total += hundred + num;
-          if (total === 0) {
+          if (total === 0 && res.length > 0) {
             total = Number(res[res.length - 1]);
           }
           total = d3(total);
-          hundred = 0;
+          if (total >= 100) {
+            hundred = 0;
+          } else if (total >= 10) {
+            hundred = total;
+            total = 0;
+          } else {
+            num = total;
+            total = hundred = 0;
+          }
         } else {
           const chunk = d3(num);
           if (hundred > 0 && chunk.toFixed(0).length >= hundred.toFixed(0).length) {
             res.push((total + hundred).toFixed(10).replace(/[.]?0+$/, ""));
             total = 0;
-          } else {
+            num = 0;
+          } else if (chunk >= 10) {
             hundred += chunk;
+            num = 0;
+          } else {
+            num = chunk;
           }
         }
         isComa = false;
-        num = 0;
         break;
       }
     }
@@ -1318,11 +1341,15 @@ class SpeechService {
     return this._isListening;
   }
   async requestPermission() {
+    if (!navigator.onLine) {
+      throw new Error("offline");
+    }
     if (this._isPermissionGranted) {
       return;
     }
     const m3 = await navigator.mediaDevices.getUserMedia({ audio: true });
     this._isPermissionGranted = m3.active;
+    m3.getTracks().forEach((track) => track.stop());
   }
   recognize(lang = "id-ID") {
     if (this.isListening) {
@@ -1743,6 +1770,7 @@ var setting = SettingService_default.get();
 if (setting.keepScreenAwake !== false) {
   ScreenService_default.keepScreenAwake();
 }
+var SpeechService2 = SpeechService_default;
 var printer;
 function Calculator() {
   const [isCheckView, openCheckView] = d2(false);
@@ -2460,13 +2488,13 @@ function Calculator() {
             case "☊": {
               handlers = {
                 onClick: async () => {
-                  if (SpeechService_default.isListening) {
-                    SpeechService_default.stop();
+                  if (SpeechService2.isListening) {
+                    SpeechService2.stop();
                     return;
                   }
                   try {
-                    await SpeechService_default.requestPermission();
-                    const rprom = SpeechService_default.recognize();
+                    await SpeechService2.requestPermission();
+                    const rprom = SpeechService2.recognize();
                     setTimeout(() => {
                       listenKeyboard = false;
                       setListening(true);
@@ -2578,7 +2606,7 @@ function Calculator() {
         hideClose: true,
         onClose: () => {
           listenKeyboard = true;
-          SpeechService_default.stop();
+          SpeechService2.stop();
         },
         children: /* @__PURE__ */ jsxDEV("h4", {
           style: { textAlign: "center", margin: "0 0 1rem 0", fontSize: "1rem" },

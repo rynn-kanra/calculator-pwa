@@ -4,7 +4,7 @@ import { TextAlign } from '../PrinterService/IPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
 import ScreenService from '../Services/ScreenService';
 import SettingService from '../Services/SettingService';
-import SpeechService from '../Services/SpeechService';
+import OSpeechService from '../Services/SpeechService';
 import '../styles/button.css';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
@@ -20,6 +20,8 @@ let setting = SettingService.get();
 if (setting.keepScreenAwake !== false) {
   ScreenService.keepScreenAwake();
 }
+
+const SpeechService = OSpeechService; 
 
 let printer: BluetoothPrinterService | undefined;
 export function Calculator() {
