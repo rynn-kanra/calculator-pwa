@@ -21,7 +21,7 @@ if (setting.keepScreenAwake !== false) {
   ScreenService.keepScreenAwake();
 }
 
-const SpeechService = OSpeechService; 
+const SpeechService = OSpeechService;
 
 let printer: BluetoothPrinterService | undefined;
 export function Calculator() {
@@ -308,7 +308,7 @@ export function Calculator() {
         if (input && input !== "-") {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
           const rExp: [string, number] = [formatted, eval(temp + input)];
-          
+
           if (exps.length <= 0 && setting.deviceName) {
             printer?.printLine(setting.deviceName, {
               align: TextAlign.center
@@ -341,7 +341,7 @@ export function Calculator() {
         if (input && input !== "-") {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
           const rExp: [string, number] = [formatted, eval(temp + input)];
-          
+
           if (exps.length <= 0 && setting.deviceName) {
             printer?.printLine(setting.deviceName, {
               align: TextAlign.center
@@ -438,15 +438,23 @@ export function Calculator() {
           setOperator("");
         }
         const isZero = value[0] === '0';
-        const decimal = input.split('.')[1];
-        if (decimal && (decimal.length + value.length + (isZero ? 1 : 0)) > setting.maxDecimal) {
-          return;
+        const numbParts = input.split('.');
+        const isDecimal = input.indexOf('.') != -1;
+        if (isDecimal) {
+          if ((numbParts[1].length + value.length + (isZero ? 1 : 0)) > setting.maxDecimal) {
+            return;
+          }
+        }
+        else {
+          if ((numbParts[0].length + value.length) > setting.maxDigit) {
+            return;
+          }
         }
 
         input += value;
         let display = '';
         let inputn = Number(input);
-        if (isZero && input.indexOf('.') != -1) {
+        if (isZero && isDecimal) {
           inputn = Number(input + '1');
           display = formatNumber(inputn);
           display = display.substring(0, display.length - 1);
@@ -572,6 +580,12 @@ export function Calculator() {
   useEffect(() => {
     divRef.current?.focus();
   }, []);
+  useEffect(() => {
+    const container = divRef.current?.querySelector(".result-container") as HTMLElement;
+    if (container && container.scrollWidth > container.clientWidth) {
+      container.scrollLeft = container.scrollWidth;
+    }
+  }, [display]);
 
   const rHandlers = useLongPress({
     onClick: () => { },

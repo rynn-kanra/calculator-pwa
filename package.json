@@ -3,6 +3,10 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "build": "bun build src/index.ts src/workers/sw.ts --outdir docs --outfile index.js --watch",
+    "serve": "bunx serve docs"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/web": "^0.0.253",

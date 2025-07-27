@@ -1275,7 +1275,7 @@ var ScreenService_default = ScreenService.default;
 // src/Model/CalculatorConfig.ts
 class CalculatorConfig {
   maxDecimal = 8;
-  maxDigit = 20;
+  maxDigit = 15;
   deviceName = "";
   printerType = "bluetooth";
   keepScreenAwake = true;
@@ -1300,6 +1300,8 @@ class CalculatorConfig {
 }
 
 // src/Services/SettingService.ts
+var isPersisted = false;
+
 class LocalStorageService {
   _type;
   _key;
@@ -1317,6 +1319,14 @@ class LocalStorageService {
     return data;
   }
   set(data) {
+    if (!isPersisted) {
+      navigator.storage.persisted().then(async (persisted) => {
+        isPersisted = persisted;
+        if (!persisted) {
+          isPersisted = await navigator.storage.persist();
+        }
+      });
+    }
     let dataStr = "";
     if (data !== null && data !== undefined) {
       dataStr = JSON.stringify(data);
@@ -1341,15 +1351,11 @@ class SpeechService {
     return this._isListening;
   }
   async requestPermission() {
-    if (!navigator.onLine) {
-      throw new Error("offline");
-    }
     if (this._isPermissionGranted) {
       return;
     }
     const m3 = await navigator.mediaDevices.getUserMedia({ audio: true });
     this._isPermissionGranted = m3.active;
-    m3.getTracks().forEach((track) => track.stop());
   }
   recognize(lang = "id-ID") {
     if (this.isListening) {
@@ -2162,14 +2168,21 @@ function Calculator() {
           setOperator("");
         }
         const isZero = value[0] === "0";
-        const decimal = input.split(".")[1];
-        if (decimal && decimal.length + value.length + (isZero ? 1 : 0) > setting.maxDecimal) {
-          return;
+        const numbParts = input.split(".");
+        const isDecimal = input.indexOf(".") != -1;
+        if (isDecimal) {
+          if (numbParts[1].length + value.length + (isZero ? 1 : 0) > setting.maxDecimal) {
+            return;
+          }
+        } else {
+          if (numbParts[0].length + value.length > setting.maxDigit) {
+            return;
+          }
         }
         input += value;
         let display2 = "";
         let inputn = Number(input);
-        if (isZero && input.indexOf(".") != -1) {
+        if (isZero && isDecimal) {
           inputn = Number(input + "1");
           display2 = formatNumber(inputn);
           display2 = display2.substring(0, display2.length - 1);
@@ -2301,6 +2314,12 @@ function Calculator() {
   y2(() => {
     divRef.current?.focus();
   }, []);
+  y2(() => {
+    const container = divRef.current?.querySelector(".result-container");
+    if (container && container.scrollWidth > container.clientWidth) {
+      container.scrollLeft = container.scrollWidth;
+    }
+  }, [display]);
   const rHandlers = useLongPress({
     onClick: () => {},
     onHold: () => clickRef.current("⚙"),

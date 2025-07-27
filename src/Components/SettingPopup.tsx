@@ -36,7 +36,7 @@ export function SettingPopup(setting: SettingPopupProps) {
         </div>
         <div>Maks. digit</div>
         <div>
-          <input class='form' type='number' name="max-digit" step="1" min="6" max="50" value={data.maxDigit} onInput={(e) => { data.maxDigit = parseInt(e.target.value); }} />
+          <input class='form' type='number' name="max-digit" step="1" min="6" max="15" value={data.maxDigit} onInput={(e) => { data.maxDigit = parseInt(e.target.value); }} />
         </div>
         <div style={{ gridColumn: 'span 2' }}>
           Nama device

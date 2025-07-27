@@ -3,7 +3,7 @@ import { PrinterConfig } from "./PrinterConfig"
 
 export class CalculatorConfig {
   public maxDecimal: number = 8;
-  public maxDigit: number = 20;
+  public maxDigit: number = 15;
   public deviceName: string = "";
   public printerType: string = "bluetooth";
   public keepScreenAwake: boolean = true;
