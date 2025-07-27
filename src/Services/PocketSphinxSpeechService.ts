@@ -1,6 +1,4 @@
 import { SpeechService } from "./SpeechService";
-import Vosk, { KaldiRecognizer } from "vosk-browser";
-import { RecognizerMessage, ServerMessagePartialResult, ServerMessageResult } from "pocketsphinx.js";
 
 // pocketsphinx.js
 // http://www.speech.cs.cmu.edu/tools/lmtool-new.html
@@ -58,7 +56,7 @@ var grammarDigits = {
 
 // CMUdict
 class PocketSphinxSpeechService extends SpeechService {
-    private _recognizer?: Vosk.KaldiRecognizer;
+    private _recognizer?: any;
     private _grammar: string;
     private _sampleRate: number;
     private _isVListening: boolean;
