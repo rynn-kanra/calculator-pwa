@@ -76,6 +76,18 @@ export function MathParser(input: string) {
             continue;
         }
 
+        if (isOperator(word)) {
+            total += hundred + num;
+            if (total != 0) {
+                res.push(total.toFixed(10).replace(/[.]?0+$/, ''));
+            }
+            
+            res.push(word);
+            isComa = false;
+            total = hundred = num = 0;
+            continue;
+        }
+
         if (isNumber(word)) {
             total += hundred + num;
             if (total != 0) {
@@ -83,18 +95,7 @@ export function MathParser(input: string) {
             }
 
             res.push(word);
-            total = hundred = num = 0;
-            continue;
-        }
-
-        if (isOperator(word)) {
-            total += hundred + num;
-            if (total != 0) {
-                res.push(total.toFixed(10).replace(/[.]?0+$/, ''));
-            }
-            res.push(word);
             isComa = false;
-
             total = hundred = num = 0;
             continue;
         }
@@ -125,6 +126,7 @@ export function MathParser(input: string) {
                 else {
                     res.push((total + hundred + num).toFixed(10).replace(/[.]?0+$/, ""));
                     total = hundred = 0;
+                    num = d;
                 }
                 break;
             }
