@@ -34,7 +34,7 @@ declare global {
     }
 }
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-class SpeechService {
+export class SpeechService {
     private _recognition?: SpeechRecognition;
     private _isPermissionGranted: boolean = false;
     private _isListening: boolean = false;

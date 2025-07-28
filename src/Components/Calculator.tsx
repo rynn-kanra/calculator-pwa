@@ -5,7 +5,7 @@ import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
 import ScreenService from '../Services/ScreenService';
 import SettingService from '../Services/SettingService';
-import OSpeechService from '../Services/SpeechService';
+import VoskSpeechService from '../Services/VoskSpeechService';
 import '../styles/button.css';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
@@ -22,7 +22,7 @@ if (setting.keepScreenAwake !== false) {
   ScreenService.keepScreenAwake();
 }
 
-const SpeechService = OSpeechService;
+const SpeechService = VoskSpeechService;
 
 let printer: IPrinterService | undefined = new LogPrinterService(setting.defaultConfig);
 printer.init();

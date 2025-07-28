@@ -16,7 +16,10 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@ricky0123/vad-web": "^0.0.24",
     "html2canvas": "^1.4.1",
-    "preact": "^10.26.9"
+    "preact": "^10.26.9",
+    "vad-web": "^0.7.0",
+    "vosk-browser": "^0.0.8"
   }
 }
