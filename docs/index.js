@@ -2014,7 +2014,7 @@ function Calculator() {
       printer?.feed(printer.option.fontSize * 0.5);
     }
     if (setting.printOperator && setting.align == 2 /* right */) {
-      text += ` ${isMult ? " " : "+"}`;
+      text += ` ${isMult ? setting.defaultConfig.textAsImage ? " " : " " : "+"}`;
     }
     printer?.printLine(text);
     if (isMult) {
@@ -2075,7 +2075,7 @@ function Calculator() {
         printer?.printSeparator("-");
         let resultText = formatNumber(result2);
         if (setting.printOperator && setting.align == 2 /* right */) {
-          resultText += "  ";
+          resultText += ` ${setting.defaultConfig.textAsImage ? " " : " "}`;
         }
         printer?.printLine(resultText);
         printer?.lineFeed(1);
@@ -2133,7 +2133,7 @@ function Calculator() {
           printer?.printSeparator("-");
           let resultText = formatNumber(resultNumb);
           if (setting.printOperator && setting.align == 2 /* right */) {
-            resultText += "  ";
+            resultText += ` ${setting.defaultConfig.textAsImage ? " " : " "}`;
           }
           printer?.printLine(resultText);
           printer?.printSeparator("=");

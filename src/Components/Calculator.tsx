@@ -91,7 +91,7 @@ export function Calculator() {
     }
 
     if (setting.printOperator && setting.align == TextAlign.right) {
-      text += ` ${(isMult ? '\u2007' : "+")}`;
+      text += ` ${(isMult ? (setting.defaultConfig.textAsImage ? '\u2007' : ' ') : "+")}`;
     }
     
     printer?.printLine(text);
@@ -160,7 +160,7 @@ export function Calculator() {
         printer?.printSeparator("-");
         let resultText = formatNumber(result);
         if (setting.printOperator && setting.align == TextAlign.right) {
-          resultText += " \u2007";
+          resultText += ` ${(setting.defaultConfig.textAsImage ? '\u2007' : ' ')}`;
         }
         printer?.printLine(resultText);
         printer?.lineFeed(1);
@@ -218,7 +218,7 @@ export function Calculator() {
           printer?.printSeparator("-");
           let resultText = formatNumber(resultNumb);
           if (setting.printOperator && setting.align == TextAlign.right) {
-            resultText += " \u2007";
+            resultText += ` ${(setting.defaultConfig.textAsImage ? '\u2007' : ' ')}`;
           }
           printer?.printLine(resultText);
           printer?.printSeparator("=");
