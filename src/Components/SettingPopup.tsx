@@ -62,8 +62,7 @@ export function SettingPopup(setting: SettingPopupProps) {
         <div>Ukuran kertas</div>
         <div>
           <select class='form' value={data.defaultConfig.paperWidth} onInput={(e) => { data.defaultConfig.paperWidth = parseInt(e.target.value); }}>
-            <option value={48}>58mm</option>
-            <option value={72}>80mm</option>
+            {[58, 80].map(o => (<option value={o}>{o}mm</option>))}
           </select>
         </div>
         <div>DPI</div>

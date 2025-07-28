@@ -1753,17 +1753,14 @@ function SettingPopup(setting) {
                 onInput: (e3) => {
                   data.defaultConfig.paperWidth = parseInt(e3.target.value);
                 },
-                children: [
-                  /* @__PURE__ */ jsxDEV("option", {
-                    value: 48,
-                    children: "58mm"
-                  }, undefined, false, undefined, this),
-                  /* @__PURE__ */ jsxDEV("option", {
-                    value: 72,
-                    children: "80mm"
-                  }, undefined, false, undefined, this)
-                ]
-              }, undefined, true, undefined, this)
+                children: [58, 80].map((o3) => /* @__PURE__ */ jsxDEV("option", {
+                  value: o3,
+                  children: [
+                    o3,
+                    "mm"
+                  ]
+                }, undefined, true, undefined, this))
+              }, undefined, false, undefined, this)
             }, undefined, false, undefined, this),
             /* @__PURE__ */ jsxDEV("div", {
               children: "DPI"
