@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import { CalculatorConfig } from '../Model/CalculatorConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import SettingService from '../Services/SettingService';
@@ -12,10 +13,14 @@ export interface SettingPopupProps {
 }
 
 export function SettingPopup(setting: SettingPopupProps) {
-  let data = setting.setting!;
-  if (!data) {
-    data = SettingService.get();
+  let settingData = setting.setting!;
+  if (!settingData) {
+    settingData = SettingService.get();
   }
+
+  const [data] = useState(settingData);
+  const [isRight, setIsRight] = useState(data.align == TextAlign.right);
+
   const onClose = () => {
     SettingService.set(data);
     setting.onClose && setting.onClose(data);
@@ -36,7 +41,7 @@ export function SettingPopup(setting: SettingPopupProps) {
         </div>
         <div>Maks. digit</div>
         <div>
-          <input class='form' type='number' name="max-digit" step="1" min="6" max="50" value={data.maxDigit} onInput={(e) => { data.maxDigit = parseInt(e.target.value); }} />
+          <input class='form' type='number' name="max-digit" step="1" min="6" max="15" value={data.maxDigit} onInput={(e) => { data.maxDigit = parseInt(e.target.value); }} />
         </div>
         <div style={{ gridColumn: 'span 2' }}>
           Nama device
@@ -56,9 +61,14 @@ export function SettingPopup(setting: SettingPopupProps) {
         </div>
         <div>Ukuran kertas</div>
         <div>
-          <select class='form' value={data.defaultConfig.width} onInput={(e) => { data.defaultConfig.width = parseInt(e.target.value); }}>
-            <option value={358}>58mm</option>
-            <option value={576}>80mm</option>
+          <select class='form' value={data.defaultConfig.paperWidth} onInput={(e) => { data.defaultConfig.paperWidth = parseInt(e.target.value); }}>
+            {[58, 80].map(o => (<option value={o}>{o}mm</option>))}
+          </select>
+        </div>
+        <div>DPI</div>
+        <div>
+          <select class='form' value={data.defaultConfig.dpi} onInput={(e) => { data.defaultConfig.dpi = parseInt(e.target.value); }}>
+            {[203, 300, 600, 1200, 2400, 4800].map(o => (<option value={o}>{o}</option>))}
           </select>
         </div>
         <div>Ukuran huruf</div>
@@ -66,13 +76,25 @@ export function SettingPopup(setting: SettingPopupProps) {
           <input class='form' type='number' name="font-size" step="2" min="12" max="72" value={data.defaultConfig.fontSize} onInput={(e) => { data.defaultConfig.fontSize = parseInt(e.target.value); }} />
         </div>
         <div>Posisi cetakan</div>
-        <div>
-          <select class='form' value={data.align} onInput={(e) => { data.align = parseInt(e.target.value); }}>
+        <div class="input-container">
+          <select class='form' value={data.align} onInput={(e) => { data.align = parseInt(e.target.value); setIsRight(data.align == TextAlign.right); }}>
             <option value={TextAlign.left}>Kiri</option>
             <option value={TextAlign.center}>Tengah</option>
             <option value={TextAlign.right}>Kanan</option>
           </select>
         </div>
+        {isRight && (
+          <><div>Cetak operator +</div>
+            <div class="input-container">
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  checked={data.printOperator} onInput={(e) => { data.printOperator = e.target.checked; }}
+                />
+                <span class="slider"></span>
+              </label>
+            </div></>
+        )}
         <div>Tipe printer</div>
         <div>
           <select class='form' value={data.printerType} onInput={(e) => { data.printerType = e.target.value; }}>

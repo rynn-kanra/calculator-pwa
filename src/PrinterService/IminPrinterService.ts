@@ -89,35 +89,35 @@ export class IminPrinterService extends ImagePrinterService {
         this._instance.close();
     }
 
-    public async reset(): Promise<void> {
+    public reset(): void {
         this._instance?.initPrinter();
     }
     public async dispose(): Promise<void> {
         this._instance = null;    
     }
-    public async textAlign(align: TextAlign): Promise<void> {
+    public textAlign(align: TextAlign): void {
         this._instance?.setAlignment(align);
     }
-    public async cut(): Promise<void> {
+    public cut(): void {
         this._instance?.partialCut();
     }
-    public async lineFeed(n: number = 1): Promise<void> {
+    public lineFeed(n: number = 1): void {
         for (let i = 0; i < n; i++) {
             this._instance?.printAndLineFeed();
         }
     }
-    public async feed(pt: number = 24): Promise<void> {
+    public feed(pt: number = 24): void {
         this._instance?.printAndFeedPaper(pt);
     }
-    public async fontFace(faceId: number = 0): Promise<void> {
+    public fontFace(faceId: number = 0): void {
         this._instance?.setTextTypeface(faceId);
     }
-    protected async fontStyle(style: FontStyle): Promise<void> {
+    protected fontStyle(style: FontStyle): void {
         if (typeof style.fontFaceType == "number") {
-            await this.fontFace(style.fontFaceType);
+            this.fontFace(style.fontFaceType);
         }
         if (typeof style.size == "number") {
-            await this.fontFace(style.size);
+            this.fontFace(style.size);
         }
 
         if (!style.fontStyle) {
@@ -139,48 +139,49 @@ export class IminPrinterService extends ImagePrinterService {
             }
         }
     }
-    public async print(text: string, fontStyle?: FontStyle): Promise<void> {
+    public print(text: string, fontStyle?: FontStyle): void {
         if (this.option.textAsImage) {
-            return await super.print(text, fontStyle);
+            return super.print(text, fontStyle);
         }
 
         if (fontStyle) {
-            await this.fontStyle(fontStyle);
+            this.fontStyle(fontStyle);
         }
         this._instance?.printText(text);
         if (fontStyle) {
-            await this.reset();
+            this.reset();
         }
     }
-    public async printLine(text: string, textStyle?: TextStyle): Promise<void> {
+    public printLine(text: string, textStyle?: TextStyle): void {
         if (this.option.textAsImage) {
-            return await super.printLine(text, textStyle);
+            return super.printLine(text, textStyle);
         }
 
         if (textStyle) {
             if (textStyle.font) {
-                await this.fontStyle(textStyle.font);
+                this.fontStyle(textStyle.font);
             }
             if (textStyle.align) {
-                await this.textAlign(textStyle.align);
+                this.textAlign(textStyle.align);
             }
         }
 
         this._instance?.printText(text);
 
         if (textStyle) {
-            await this.reset();
+            this.reset();
         }
     }
-    public async printImage(data: ArrayBufferLike, width: number, height: number): Promise<void> {
+    public printImage(data: ArrayBufferLike, width: number, height: number) {
         const binary = new Uint8Array(data).reduce((c, byte) => c + String.fromCharCode(byte), '');
         const base64 = btoa(binary);
         const dataUri = `data:image/png;base64,${base64}`;
         this._instance?.printSingleBitmap(dataUri);
     }
-    public async openCashdrawer(): Promise<void> {
+    public openCashdrawer(): void {
         this._instance?.openCashBox();
     }
-    public async printQR(): Promise<void> { }
-    public async printBarcode(): Promise<void> { }
+    public printQR(): void { }
+    public printBarcode(): void { }
+    public pause(): void { }
 }

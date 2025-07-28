@@ -1,17 +1,29 @@
 import { CalculatorConfig } from "../Model/CalculatorConfig";
+import { copy } from "../Utility/copy";
 
+let isPersisted = false;
 class LocalStorageService<T extends object> {
     constructor(private _type: new () => T, private _key: string) { }
     public get() {
         const d = localStorage.getItem(this._key);
-        const data = new this._type();
+        let data = new this._type();
         if (d) {
             const dat = JSON.parse(d);
-            Object.assign(data, dat);
+            data = copy(data, dat, true);
         }
         return data;
     }
     public set(data: T) {
+        if (!isPersisted) {
+            navigator.storage.persisted()
+                .then(async persisted => {
+                    isPersisted = persisted;
+                    if (!persisted) {
+                        isPersisted = await navigator.storage.persist();
+                    }
+                });
+        }
+        
         let dataStr = "";
         if (data !== null && data !== undefined) {
             dataStr = JSON.stringify(data);

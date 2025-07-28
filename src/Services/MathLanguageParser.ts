@@ -24,9 +24,9 @@ const map: ExpTree = {
     "belas": (n: number) => n + 10,
     "ratus": (n: number) => n * 100,
     "ribu": (n: number) => n * 1000,
-    "juta": (n: number) => n * 10 ^ 6,
-    "miliar": (n: number) => n * 10 ^ 9,
-    "triliun": (n: number) => n * 10 ^ 12,
+    "juta": (n: number) => n * 1_000_000,
+    "miliar": (n: number) => n * 1_000_000_000,
+    "triliun": (n: number) => n * 1_000_000_000_000,
 };
 const normalizeMap: Map<RegExp, string> = new Map([
     [/[.]/g, ""],
@@ -44,7 +44,7 @@ const normalizeMap: Map<RegExp, string> = new Map([
     [/tujoh/g, "tujuh"],
     [/lapan/g, "delapan"],
     [/persen/g, "%"],
-    [/([^0-9.])1\/2(?![0-9.])/g, "$1setengah"],
+    [/([^0-9.]|^)1\/2(?![0-9.])/g, "$1setengah"],
     [/(sama dengan|berapa|hasil|brapa)/g, "="]
 ]);
 function isNumber(n: string) {
@@ -110,7 +110,22 @@ export function MathParser(input: string) {
                         res[res.length - 1] += num;
                     }
                 }
-                num = d;
+                if (num == 0) {
+                    num = d;
+                }
+                else if (num == 1 || !Number.isInteger(num)) {
+                    res.push((total + hundred + num).toFixed(10).replace(/[.]?0+$/, ""));
+                    total = hundred = 0;
+                    num = d;
+                }
+                else if (total + hundred == 0) {
+                    hundred = num * 10;
+                    num = d;
+                }
+                else {
+                    res.push((total + hundred + num).toFixed(10).replace(/[.]?0+$/, ""));
+                    total = hundred = 0;
+                }
                 break;
             }
             case "undefined": {
@@ -119,24 +134,38 @@ export function MathParser(input: string) {
             default: {
                 if (num == 0) {
                     total += hundred + num;
-                    if (total === 0) {
+                    if (total === 0 && res.length > 0) {
                         total = Number(res[res.length - 1]);
                     }
                     total = d(total);
-                    hundred = 0;
+                    if (total >= 100) {
+                        hundred = 0;
+                    }
+                    else if (total >= 10) {
+                        hundred = total;
+                        total = 0;
+                    }
+                    else {
+                        num = total;
+                        total = hundred = 0;
+                    }
                 }
                 else {
                     const chunk = d(num);
                     if (hundred > 0 && chunk.toFixed(0).length >= hundred.toFixed(0).length) {
                         res.push((total + hundred).toFixed(10).replace(/[.]?0+$/, ''));
                         total = 0;
+                        num = 0;
+                    }
+                    else if (chunk >= 10) {
+                        hundred += chunk;
+                        num = 0;
                     }
                     else {
-                        hundred += chunk;
+                        num = chunk;
                     }
                 }
                 isComa = false;
-                num = 0;
                 break;
             }
         }
@@ -168,7 +197,6 @@ export function CalcParser(input: string) {
             }
             let num = Number(token);
             if (!skipThousand && num < 999) {
-                // TODO: detect bagi dan kali. cuma 1 angk
                 num *= 1000;
                 result += num.toFixed(10).replace(/[.]?0+$/, '');
             }

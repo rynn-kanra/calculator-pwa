@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterService';
-import { TextAlign } from '../PrinterService/IPrinterService';
+import { IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
+import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
 import ScreenService from '../Services/ScreenService';
 import SettingService from '../Services/SettingService';
-import SpeechService from '../Services/SpeechService';
+import OSpeechService from '../Services/SpeechService';
 import '../styles/button.css';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
@@ -21,7 +22,12 @@ if (setting.keepScreenAwake !== false) {
   ScreenService.keepScreenAwake();
 }
 
-let printer: BluetoothPrinterService | undefined;
+const SpeechService = OSpeechService;
+
+let printer: IPrinterService | undefined = new LogPrinterService(setting.defaultConfig);
+printer.init();
+setting.apply(printer);
+(globalThis as any).printer = printer;
 export function Calculator() {
   const [isCheckView, openCheckView] = useState(false);
   const [showSetting, openSetting] = useState(false);
@@ -57,29 +63,46 @@ export function Calculator() {
       console.log("ini printer:" + e);
     }
   }
-  const print = (text: string, sum?: number) => {
+  const addResult = function (text: string, num: number) {
+    const exp: [string, number] = [text, num];
+    exps.push(exp);
+    print(exp);
+  }
+  const isMultExp = (text: string) => text.indexOf("×") != -1 || text.indexOf("÷") != -1;
+  const print = (exp: [string, number]) => {
+    const index = exps.indexOf(exp);
+    if (index === 0) {
+      if (setting.deviceName) {
+        printer?.printLine(setting.deviceName, {
+          align: TextAlign.center
+        });
+        printer?.feed(printer.option.fontSize * 0.5);
+      }
+    }
+
+    let text = exp[0];
+    const sum = exp[1];
     if (text[0] === "+") {
       text = text.substring(1);
     }
-    const isMult = text.indexOf("×") != -1 || text.indexOf("÷") != -1;
-    if (!printer) {
-      switch (setting.align) {
-        case TextAlign.right: {
-          text = text.padStart(50);
-          break;
-        }
-        case TextAlign.center: {
-          text = ' '.repeat((50 - text.length) / 2) + text;
-          break;
-        }
-      }
-      console.log(text);
+    const isMult = isMultExp(text);
+    if (isMult && index > 0 && !isMultExp(exps[index - 1][0])) {
+      printer?.feed(printer.option.fontSize * 0.5);
     }
-    else {
-      printer?.printLine(text);
+
+    if (setting.printOperator && setting.align == TextAlign.right) {
+      text += ` ${(isMult ? (setting.defaultConfig.textAsImage ? '\u2007' : ' ') : "+")}`;
     }
+    
+    printer?.printLine(text);
+
     if (isMult) {
-      printer?.printLine("=" + formatNumber(sum || 0));
+      let multSumText = "=" + formatNumber(sum || 0);
+      if (setting.printOperator && setting.align == TextAlign.right) {
+        multSumText += ` +`;
+      }
+
+      printer?.printLine(multSumText);
       printer?.feed(printer.option.fontSize * 0.5);
     }
   }
@@ -117,7 +140,7 @@ export function Calculator() {
         break;
       }
       case "⎙": {
-        if (!printer) {
+        if (!printer || printer instanceof LogPrinterService) {
           requestPrinter();
           return;
         }
@@ -127,15 +150,19 @@ export function Calculator() {
           printer?.printLine(setting.deviceName, {
             align: TextAlign.center
           });
-          printer?.feed(15);
+          printer?.feed(printer.option.fontSize * 0.5);
         }
 
         for (const exp of exps) {
-          print(exp[0], exp[1]);
+          print(exp);
           result += exp[1];
         }
         printer?.printSeparator("-");
-        print(formatNumber(result));
+        let resultText = formatNumber(result);
+        if (setting.printOperator && setting.align == TextAlign.right) {
+          resultText += ` ${(setting.defaultConfig.textAsImage ? '\u2007' : ' ')}`;
+        }
+        printer?.printLine(resultText);
         printer?.lineFeed(1);
         printer?.printSeparator("=");
         printer?.lineFeed(1);
@@ -178,10 +205,8 @@ export function Calculator() {
         let ncheckIndex = checkIndex;
         if (input) {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
-          exps.push([formatted, eval(temp + input)]);
-          setCheckIndex(exps.length);
+          addResult(formatted, eval(temp + input));
           ncheckIndex = exps.length;
-          print(formatted, eval(temp + input));
           temp = tempDisplay = input = "";
         }
         setOperator(value);
@@ -191,7 +216,11 @@ export function Calculator() {
         if (ncheckIndex >= exps.length && exps.length > 0) {
           temp = tempDisplay = input = "";
           printer?.printSeparator("-");
-          print(formatNumber(resultNumb));
+          let resultText = formatNumber(resultNumb);
+          if (setting.printOperator && setting.align == TextAlign.right) {
+            resultText += ` ${(setting.defaultConfig.textAsImage ? '\u2007' : ' ')}`;
+          }
+          printer?.printLine(resultText);
           printer?.printSeparator("=");
           printer?.lineFeed(1);
           if (printer?.option.sharePrinter) {
@@ -234,9 +263,7 @@ export function Calculator() {
         if (exps.length > 0) {
           const r = result();
           const formatted = `${r}×${tempDisplay}${formatNumber(parseFloat(input))}%`;
-          const rExp: [string, number] = [formatted, eval(`(${temp + input}) * ${r}/100`)];
-          exps.push(rExp);
-          print(rExp[0], rExp[1]);
+          addResult(formatted, eval(`(${temp + input}) * ${r}/100`));
           setCheckIndex(exps.length);
           input = temp = tempDisplay = "";
           setOperator('+');
@@ -305,16 +332,7 @@ export function Calculator() {
       case "−": {
         if (input && input !== "-") {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
-          const rExp: [string, number] = [formatted, eval(temp + input)];
-          
-          if (exps.length <= 0 && setting.deviceName) {
-            printer?.printLine(setting.deviceName, {
-              align: TextAlign.center
-            });
-            printer?.feed(15);
-          }
-          exps.push(rExp);
-          print(rExp[0], rExp[1]);
+          addResult(formatted, eval(temp + input));
           input = "";
           temp = '-';
           tempDisplay = "−";
@@ -338,16 +356,7 @@ export function Calculator() {
       case "+": {
         if (input && input !== "-") {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
-          const rExp: [string, number] = [formatted, eval(temp + input)];
-          
-          if (exps.length <= 0 && setting.deviceName) {
-            printer?.printLine(setting.deviceName, {
-              align: TextAlign.center
-            });
-            printer?.feed(15);
-          }
-          exps.push(rExp);
-          print(rExp[0], rExp[1]);
+          addResult(formatted, eval(temp + input));
           input = "";
         }
         setCheckIndex(exps.length);
@@ -436,15 +445,23 @@ export function Calculator() {
           setOperator("");
         }
         const isZero = value[0] === '0';
-        const decimal = input.split('.')[1];
-        if (decimal && (decimal.length + value.length + (isZero ? 1 : 0)) > setting.maxDecimal) {
-          return;
+        const numbParts = input.split('.');
+        const isDecimal = input.indexOf('.') != -1;
+        if (isDecimal) {
+          if ((numbParts[1].length + value.length + (isZero ? 1 : 0)) > setting.maxDecimal) {
+            return;
+          }
+        }
+        else {
+          if ((numbParts[0].length + value.length) > setting.maxDigit) {
+            return;
+          }
         }
 
         input += value;
         let display = '';
         let inputn = Number(input);
-        if (isZero && input.indexOf('.') != -1) {
+        if (isZero && isDecimal) {
           inputn = Number(input + '1');
           display = formatNumber(inputn);
           display = display.substring(0, display.length - 1);
@@ -570,6 +587,12 @@ export function Calculator() {
   useEffect(() => {
     divRef.current?.focus();
   }, []);
+  useEffect(() => {
+    const container = divRef.current?.querySelector(".result-container") as HTMLElement;
+    if (container && container.scrollWidth > container.clientWidth) {
+      container.scrollLeft = container.scrollWidth;
+    }
+  }, [display]);
 
   const rHandlers = useLongPress({
     onClick: () => { },

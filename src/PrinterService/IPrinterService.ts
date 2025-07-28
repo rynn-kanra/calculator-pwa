@@ -36,12 +36,15 @@ export interface IPrinterService {
     init(): Promise<void>;
     connect(): Promise<void>;
     disconnect(): Promise<void>;
+    dispose(): Promise<void>;
     reset(): void;
+    pause(): void;
     textAlign(align: TextAlign): void;
     cut(isFull?: boolean): void;
     lineFeed(n?: number): void;
     feed(pt?: number): void;
     print(text: string, style?: DeepPartial<FontStyle>): void;
+    printSeparator(separator: string): void;
     printLine(text: string, style?: DeepPartial<TextStyle>): void;
     printImage(data: ArrayBufferLike, width: number, height: number): void;
     openCashdrawer(): void;

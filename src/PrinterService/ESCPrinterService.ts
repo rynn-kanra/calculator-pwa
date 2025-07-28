@@ -231,7 +231,7 @@ export abstract class ESCPrinterService extends ImagePrinterService {
         }
 
         let count = 32; // 32/42-48
-        if (this.option.width > 384) {
+        if (this.option.paperWidth > 58) {
             count = 42;
         }
 

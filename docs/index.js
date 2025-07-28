@@ -491,22 +491,49 @@ async function retry(fn, delays) {
 
 // src/Model/PrinterConfig.ts
 class PrinterConfig {
-  width = 358;
+  get width() {
+    return Math.ceil(this.printableWidth * this.dpi / 25.4);
+  }
+  get printableWidth() {
+    switch (this.paperWidth) {
+      case 80:
+        return 72;
+      case 58:
+        return 48;
+      default:
+        return this.paperWidth - 10;
+    }
+  }
   textAsImage = true;
   mtu = 50;
-  image = "bit";
+  image = "rastar";
   sharePrinter = false;
   fontSize = 30;
   fontFace = 0;
   lineHeight = 1.2;
+  paperWidth = 58;
+  dpi = 203;
 }
 
 // src/Utility/copy.ts
+function isWritable(obj, prop) {
+  while (obj) {
+    const desc = Object.getOwnPropertyDescriptor(obj, prop);
+    if (desc) {
+      return !(typeof desc.get === "function" && typeof desc.set === "undefined");
+    }
+    obj = Object.getPrototypeOf(obj);
+  }
+  return true;
+}
 function copy(target, source, isSet = false) {
   if (!target || !source) {
     return target || source;
   }
   for (const prop in source) {
+    if (!isWritable(target, prop)) {
+      continue;
+    }
     const curVal = target[prop];
     switch (true) {
       case Array.isArray(curVal): {
@@ -527,7 +554,7 @@ function copy(target, source, isSet = false) {
         break;
       }
       case typeof curVal === "object": {
-        copy(curVal, source[prop]);
+        copy(curVal, source[prop], isSet);
         break;
       }
       default: {
@@ -550,19 +577,16 @@ class ImagePrinterService {
     if (!style) {
       style = {};
     }
-    style = {
+    this.defaultStyle = copy(style, {
       align: 0 /* left */,
       lineHeight: 1.2,
-      ...style,
       font: {
         fontFaceType: 0,
         fontStyle: 0 /* none */,
-        size: 24,
-        ...style.font
+        size: 24
       }
-    };
-    this.defaultStyle = style;
-    this.currentStyle = { ...style, font: { ...style.font } };
+    });
+    this.currentStyle = copy({}, this.defaultStyle);
   }
   device;
   currentStyle;
@@ -570,18 +594,20 @@ class ImagePrinterService {
   _canvas = null;
   option;
   print(text, fontStyle) {
-    const textStyle = fontStyle ? { align: this.currentStyle.align, lineHeight: this.currentStyle.lineHeight, font: fontStyle } : undefined;
+    const textStyle = fontStyle ? copy({ font: fontStyle }, this.currentStyle) : undefined;
     this.printLine(text, textStyle);
   }
-  printLine(text, textStyle) {
-    let imageData;
-    this.drawCanvas((cv, ctx2, textStyle2) => {
+  printLine(text, textStyl) {
+    const textStyle = copy(textStyl, this.currentStyle);
+    const imageData = this.drawCanvas((cv, ctx2) => {
       const lines = [];
       let line = "";
+      let textHeight = 0;
       for (let i3 = 0;i3 < text.length; i3++) {
         const testLine = line + text[i3];
-        const width = ctx2.measureText(testLine).width;
-        if (width > cv.width && line !== "") {
+        const metrics = ctx2.measureText(testLine);
+        textHeight = Math.max(textHeight, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent);
+        if (metrics.width > cv.width && line !== "") {
           lines.push(line);
           line = text[i3];
         } else {
@@ -591,67 +617,79 @@ class ImagePrinterService {
       if (line) {
         lines.push(line);
       }
-      const lineHeight = Math.ceil(textStyle2.font?.size * textStyle2.lineHeight);
+      if (!textHeight) {
+        textHeight = textStyle.font.size;
+      }
+      const lineHeight = Math.ceil(textHeight * textStyle.lineHeight);
       const height = lines.length * lineHeight;
-      const x2 = textStyle2.align === 2 /* right */ ? cv.width : textStyle2.align == 1 /* center */ ? cv.width / 2 : 0;
+      const x2 = textStyle.align === 2 /* right */ ? cv.width : textStyle.align == 1 /* center */ ? cv.width / 2 : 0;
       for (let i3 = 0;i3 < lines.length; i3++) {
-        const y3 = i3 * lineHeight + Math.floor(textStyle2.font.size * (textStyle2.lineHeight - 1) / 2);
+        const y3 = i3 * lineHeight + Math.floor((lineHeight - textHeight) / 3);
         const text2 = lines[i3];
         ctx2.fillText(text2, x2, y3);
-        if (textStyle2.font.fontStyle & 4 /* underline */) {
+        if (textStyle.font.fontStyle & 4 /* underline */) {
           const textWidth = ctx2.measureText(text2).width;
-          const y22 = y3 + textStyle2.font.size * (1 - Math.abs(textStyle2.lineHeight - 1) / 2);
+          const y22 = y3 + lineHeight - Math.ceil((lineHeight - textHeight) / 2);
           ctx2.beginPath();
-          ctx2.moveTo(x2, y22);
-          ctx2.lineTo(x2 + textWidth, y22);
+          const lx = textStyle.align === 2 /* right */ ? x2 - textWidth : textStyle.align == 1 /* center */ ? x2 - textWidth / 2 : 0;
+          ctx2.moveTo(lx, y22);
+          ctx2.lineTo(lx + textWidth, y22);
           ctx2.lineWidth = 1;
           ctx2.strokeStyle = ctx2.fillStyle;
           ctx2.stroke();
         }
       }
-      imageData = ctx2.getImageData(0, 0, cv.width, height);
+      return height;
     }, textStyle);
     this.printImage(imageData.data.buffer, imageData.width, imageData.height);
   }
   printSeparator(separator) {
-    let imageData;
-    this.drawCanvas((cv, ctx2, textStyle) => {
-      const count = Math.ceil(cv.width / ctx2.measureText(separator).width);
-      const x2 = textStyle.align === 2 /* right */ ? cv.width : textStyle.align == 1 /* center */ ? cv.width / 2 : 0;
-      const lineHeight = textStyle.font.size * textStyle.lineHeight;
+    const textStyle = this.currentStyle;
+    const imageData = this.drawCanvas((cv, ctx2) => {
+      const baseMetrics = ctx2.measureText("1");
+      const textHeight = baseMetrics.actualBoundingBoxAscent + baseMetrics.actualBoundingBoxDescent;
+      const lineHeight = textHeight * textStyle.lineHeight;
+      const metrics = ctx2.measureText(separator);
+      const count = Math.ceil(cv.width / metrics.width);
       const text = separator.repeat(count);
-      ctx2.fillText(text, x2, 0);
-      imageData = ctx2.getImageData(0, 0, cv.width, lineHeight);
+      const y3 = Math.floor((lineHeight - textHeight) / 2);
+      const x2 = textStyle.align === 2 /* right */ ? cv.width : textStyle.align == 1 /* center */ ? cv.width / 2 : 0;
+      ctx2.fillText(text, x2, y3);
+      return lineHeight;
     });
     this.printImage(imageData.data.buffer, imageData.width, imageData.height);
   }
   reset() {
-    this.currentStyle = { ...this.defaultStyle, font: { ...this.defaultStyle.font } };
+    this.currentStyle = copy({}, this.defaultStyle);
   }
   feed(pt = 24) {
-    let imageData;
-    this.drawCanvas((cv, ctx2) => {
+    const imageData = this.drawCanvas((cv, ctx2) => {
+      ctx2.font = ctx2.font.replace(`${this.currentStyle.font.size}px`, `${pt}px`);
+      const baseMetrics = ctx2.measureText("1");
+      const textHeight = baseMetrics.actualBoundingBoxAscent + baseMetrics.actualBoundingBoxDescent;
+      const lineHeight = textHeight * this.currentStyle.lineHeight;
       ctx2.fillStyle = "white";
-      ctx2.fillRect(0, 0, cv.width, pt);
-      imageData = ctx2.getImageData(0, 0, cv.width, pt);
+      ctx2.fillRect(0, 0, cv.width, lineHeight);
+      return lineHeight;
     });
     this.printImage(imageData.data.buffer, imageData.width, imageData.height);
   }
   drawCanvas(draw, textStyle) {
     let canvas = this._canvas;
     this._canvas = null;
+    const width = this.option.width;
+    const height = 100;
     if (!canvas) {
       canvas = document.createElement("canvas");
     }
     if (!textStyle) {
       textStyle = this.currentStyle;
-    } else {
-      textStyle = copy(textStyle, this.currentStyle);
     }
-    canvas.width = this.option.width;
-    canvas.height = 100;
+    canvas.width = width;
+    canvas.height = height;
     const ctx2 = canvas.getContext("2d");
     ctx2.fillStyle = "black";
+    ctx2.textBaseline = "top";
     ctx2.font = `${textStyle.font.size}px sans-serif`;
     if (textStyle.font.fontStyle & 2 /* italic */) {
       ctx2.font += " italic";
@@ -675,13 +713,15 @@ class ImagePrinterService {
         break;
       }
     }
-    ctx2.clearRect(0, 0, canvas.width, canvas.height);
-    draw(canvas, ctx2, textStyle);
+    ctx2.clearRect(0, 0, width, height);
+    const finalHeight = draw(canvas, ctx2);
+    const imageData = ctx2.getImageData(0, 0, width, finalHeight);
     this._canvas = canvas;
+    return imageData;
   }
   setDefaultStyle(style) {
     this.defaultStyle = style;
-    this.currentStyle = { ...style, font: { ...style.font } };
+    this.currentStyle = copy({}, style);
   }
 }
 
@@ -886,7 +926,7 @@ class ESCPrinterService extends ImagePrinterService {
       return super.printSeparator(separator);
     }
     let count = 32;
-    if (this.option.width > 384) {
+    if (this.option.paperWidth > 58) {
       count = 42;
     }
     this.printLine(separator.padStart(count, separator));
@@ -1033,6 +1073,97 @@ class BluetoothPrinterService extends ESCPrinterService {
   }
 }
 
+// src/PrinterService/LogPrinterService.ts
+class LogPrinterService extends ImagePrinterService {
+  constructor(option, style) {
+    super(option, style);
+  }
+  _imageCanvas;
+  _tempCanvas;
+  init() {
+    this.device = { id: "", name: "console" };
+    return Promise.resolve();
+  }
+  connect() {
+    return Promise.resolve();
+  }
+  disconnect() {
+    return Promise.resolve();
+  }
+  dispose() {
+    return Promise.resolve();
+  }
+  printLine(text, textStyle) {
+    if (this.option.textAsImage) {
+      return super.printLine(text, textStyle);
+    }
+    textStyle = copy(textStyle, this.currentStyle);
+    switch (textStyle.align) {
+      case 2 /* right */: {
+        text = text.padStart(50);
+        break;
+      }
+      case 1 /* center */: {
+        text = " ".repeat((50 - text.length) / 2) + text;
+        break;
+      }
+    }
+    console.log(text);
+  }
+  printSeparator(separator) {
+    if (this.option.textAsImage) {
+      return super.printSeparator(separator);
+    }
+    console.log(separator.padStart(50, separator));
+  }
+  textAlign(align) {}
+  cut(isFull) {
+    console.log("cut");
+  }
+  lineFeed(n2 = 1) {
+    for (let i3 = 0, len = n2 || 1;i3 < len; i3++) {
+      console.log("");
+    }
+  }
+  feed(pt = 24) {
+    if (this.option.textAsImage) {
+      return super.feed(pt);
+    }
+    this.lineFeed(Math.ceil(pt / 24));
+  }
+  printImage(data, width, height) {
+    if (!this._imageCanvas) {
+      this._imageCanvas = document.createElement("canvas");
+    }
+    this._imageCanvas.width = width;
+    this._imageCanvas.height = height;
+    const ctx2 = this._imageCanvas.getContext("2d");
+    ctx2.fillStyle = "white";
+    ctx2.fillRect(0, 0, width, height);
+    if (!this._tempCanvas) {
+      this._tempCanvas = document.createElement("canvas");
+    }
+    this._tempCanvas.width = width;
+    this._tempCanvas.height = height;
+    const tempCtx = this._tempCanvas.getContext("2d");
+    tempCtx.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
+    ctx2.drawImage(this._tempCanvas, 0, 0);
+    const dataUrl = this._imageCanvas.toDataURL();
+    const style = [
+      "font-size: 1px;",
+      `background: url(${dataUrl}) no-repeat;`,
+      "background-size: contain;",
+      `padding: ${height}px ${width}px;`,
+      "line-height: 0;"
+    ].join(" ");
+    console.log("%c ", style);
+  }
+  openCashdrawer() {}
+  printQR() {}
+  printBarcode() {}
+  pause() {}
+}
+
 // src/Services/MathLanguageParser.ts
 var map = {
   nol: 0,
@@ -1057,9 +1188,9 @@ var map = {
   belas: (n2) => n2 + 10,
   ratus: (n2) => n2 * 100,
   ribu: (n2) => n2 * 1000,
-  juta: (n2) => n2 * 10 ^ 6,
-  miliar: (n2) => n2 * 10 ^ 9,
-  triliun: (n2) => n2 * 10 ^ 12
+  juta: (n2) => n2 * 1e6,
+  miliar: (n2) => n2 * 1e9,
+  triliun: (n2) => n2 * 1000000000000
 };
 var normalizeMap = new Map([
   [/[.]/g, ""],
@@ -1077,7 +1208,7 @@ var normalizeMap = new Map([
   [/tujoh/g, "tujuh"],
   [/lapan/g, "delapan"],
   [/persen/g, "%"],
-  [/([^0-9.])1\/2(?![0-9.])/g, "$1setengah"],
+  [/([^0-9.]|^)1\/2(?![0-9.])/g, "$1setengah"],
   [/(sama dengan|berapa|hasil|brapa)/g, "="]
 ]);
 function isNumber(n2) {
@@ -1137,7 +1268,19 @@ function MathParser(input) {
             res[res.length - 1] += num;
           }
         }
-        num = d3;
+        if (num == 0) {
+          num = d3;
+        } else if (num == 1 || !Number.isInteger(num)) {
+          res.push((total + hundred + num).toFixed(10).replace(/[.]?0+$/, ""));
+          total = hundred = 0;
+          num = d3;
+        } else if (total + hundred == 0) {
+          hundred = num * 10;
+          num = d3;
+        } else {
+          res.push((total + hundred + num).toFixed(10).replace(/[.]?0+$/, ""));
+          total = hundred = 0;
+        }
         break;
       }
       case "undefined": {
@@ -1146,22 +1289,33 @@ function MathParser(input) {
       default: {
         if (num == 0) {
           total += hundred + num;
-          if (total === 0) {
+          if (total === 0 && res.length > 0) {
             total = Number(res[res.length - 1]);
           }
           total = d3(total);
-          hundred = 0;
+          if (total >= 100) {
+            hundred = 0;
+          } else if (total >= 10) {
+            hundred = total;
+            total = 0;
+          } else {
+            num = total;
+            total = hundred = 0;
+          }
         } else {
           const chunk = d3(num);
           if (hundred > 0 && chunk.toFixed(0).length >= hundred.toFixed(0).length) {
             res.push((total + hundred).toFixed(10).replace(/[.]?0+$/, ""));
             total = 0;
-          } else {
+            num = 0;
+          } else if (chunk >= 10) {
             hundred += chunk;
+            num = 0;
+          } else {
+            num = chunk;
           }
         }
         isComa = false;
-        num = 0;
         break;
       }
     }
@@ -1252,11 +1406,12 @@ var ScreenService_default = ScreenService.default;
 // src/Model/CalculatorConfig.ts
 class CalculatorConfig {
   maxDecimal = 8;
-  maxDigit = 20;
+  maxDigit = 15;
   deviceName = "";
   printerType = "bluetooth";
   keepScreenAwake = true;
   align = 2 /* right */;
+  printOperator = false;
   defaultConfig = new PrinterConfig;
   printerConfig = {};
   apply(printer) {
@@ -1277,6 +1432,8 @@ class CalculatorConfig {
 }
 
 // src/Services/SettingService.ts
+var isPersisted = false;
+
 class LocalStorageService {
   _type;
   _key;
@@ -1286,14 +1443,22 @@ class LocalStorageService {
   }
   get() {
     const d3 = localStorage.getItem(this._key);
-    const data = new this._type;
+    let data = new this._type;
     if (d3) {
       const dat = JSON.parse(d3);
-      Object.assign(data, dat);
+      data = copy(data, dat, true);
     }
     return data;
   }
   set(data) {
+    if (!isPersisted) {
+      navigator.storage.persisted().then(async (persisted) => {
+        isPersisted = persisted;
+        if (!persisted) {
+          isPersisted = await navigator.storage.persist();
+        }
+      });
+    }
     let dataStr = "";
     if (data !== null && data !== undefined) {
       dataStr = JSON.stringify(data);
@@ -1477,10 +1642,12 @@ var BottomPopup_default = BottomPopup;
 
 // src/Components/SettingPopup.tsx
 function SettingPopup(setting) {
-  let data = setting.setting;
-  if (!data) {
-    data = SettingService_default.get();
+  let settingData = setting.setting;
+  if (!settingData) {
+    settingData = SettingService_default.get();
   }
+  const [data] = d2(settingData);
+  const [isRight, setIsRight] = d2(data.align == 2 /* right */);
   const onClose = () => {
     SettingService_default.set(data);
     setting.onClose && setting.onClose(data);
@@ -1531,7 +1698,7 @@ function SettingPopup(setting) {
                 name: "max-digit",
                 step: "1",
                 min: "6",
-                max: "50",
+                max: "15",
                 value: data.maxDigit,
                 onInput: (e3) => {
                   data.maxDigit = parseInt(e3.target.value);
@@ -1582,21 +1749,34 @@ function SettingPopup(setting) {
             /* @__PURE__ */ jsxDEV("div", {
               children: /* @__PURE__ */ jsxDEV("select", {
                 class: "form",
-                value: data.defaultConfig.width,
+                value: data.defaultConfig.paperWidth,
                 onInput: (e3) => {
-                  data.defaultConfig.width = parseInt(e3.target.value);
+                  data.defaultConfig.paperWidth = parseInt(e3.target.value);
                 },
-                children: [
-                  /* @__PURE__ */ jsxDEV("option", {
-                    value: 358,
-                    children: "58mm"
-                  }, undefined, false, undefined, this),
-                  /* @__PURE__ */ jsxDEV("option", {
-                    value: 576,
-                    children: "80mm"
-                  }, undefined, false, undefined, this)
-                ]
-              }, undefined, true, undefined, this)
+                children: [58, 80].map((o3) => /* @__PURE__ */ jsxDEV("option", {
+                  value: o3,
+                  children: [
+                    o3,
+                    "mm"
+                  ]
+                }, undefined, true, undefined, this))
+              }, undefined, false, undefined, this)
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsxDEV("div", {
+              children: "DPI"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsxDEV("div", {
+              children: /* @__PURE__ */ jsxDEV("select", {
+                class: "form",
+                value: data.defaultConfig.dpi,
+                onInput: (e3) => {
+                  data.defaultConfig.dpi = parseInt(e3.target.value);
+                },
+                children: [203, 300, 600, 1200, 2400, 4800].map((o3) => /* @__PURE__ */ jsxDEV("option", {
+                  value: o3,
+                  children: o3
+                }, undefined, false, undefined, this))
+              }, undefined, false, undefined, this)
             }, undefined, false, undefined, this),
             /* @__PURE__ */ jsxDEV("div", {
               children: "Ukuran huruf"
@@ -1619,11 +1799,13 @@ function SettingPopup(setting) {
               children: "Posisi cetakan"
             }, undefined, false, undefined, this),
             /* @__PURE__ */ jsxDEV("div", {
+              class: "input-container",
               children: /* @__PURE__ */ jsxDEV("select", {
                 class: "form",
                 value: data.align,
                 onInput: (e3) => {
                   data.align = parseInt(e3.target.value);
+                  setIsRight(data.align == 2 /* right */);
                 },
                 children: [
                   /* @__PURE__ */ jsxDEV("option", {
@@ -1641,6 +1823,31 @@ function SettingPopup(setting) {
                 ]
               }, undefined, true, undefined, this)
             }, undefined, false, undefined, this),
+            isRight && /* @__PURE__ */ jsxDEV(k, {
+              children: [
+                /* @__PURE__ */ jsxDEV("div", {
+                  children: "Cetak operator +"
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsxDEV("div", {
+                  class: "input-container",
+                  children: /* @__PURE__ */ jsxDEV("label", {
+                    class: "switch",
+                    children: [
+                      /* @__PURE__ */ jsxDEV("input", {
+                        type: "checkbox",
+                        checked: data.printOperator,
+                        onInput: (e3) => {
+                          data.printOperator = e3.target.checked;
+                        }
+                      }, undefined, false, undefined, this),
+                      /* @__PURE__ */ jsxDEV("span", {
+                        class: "slider"
+                      }, undefined, false, undefined, this)
+                    ]
+                  }, undefined, true, undefined, this)
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
             /* @__PURE__ */ jsxDEV("div", {
               children: "Tipe printer"
             }, undefined, false, undefined, this),
@@ -1743,7 +1950,11 @@ var setting = SettingService_default.get();
 if (setting.keepScreenAwake !== false) {
   ScreenService_default.keepScreenAwake();
 }
-var printer;
+var SpeechService2 = SpeechService_default;
+var printer = new LogPrinterService(setting.defaultConfig);
+printer.init();
+setting.apply(printer);
+globalThis.printer = printer;
 function Calculator() {
   const [isCheckView, openCheckView] = d2(false);
   const [showSetting, openSetting] = d2(false);
@@ -1777,28 +1988,41 @@ function Calculator() {
       console.log("ini printer:" + e3);
     }
   };
-  const print = (text, sum) => {
+  const addResult = function(text, num) {
+    const exp = [text, num];
+    exps.push(exp);
+    print(exp);
+  };
+  const isMultExp = (text) => text.indexOf("×") != -1 || text.indexOf("÷") != -1;
+  const print = (exp) => {
+    const index = exps.indexOf(exp);
+    if (index === 0) {
+      if (setting.deviceName) {
+        printer?.printLine(setting.deviceName, {
+          align: 1 /* center */
+        });
+        printer?.feed(printer.option.fontSize * 0.5);
+      }
+    }
+    let text = exp[0];
+    const sum = exp[1];
     if (text[0] === "+") {
       text = text.substring(1);
     }
-    const isMult = text.indexOf("×") != -1 || text.indexOf("÷") != -1;
-    if (!printer) {
-      switch (setting.align) {
-        case 2 /* right */: {
-          text = text.padStart(50);
-          break;
-        }
-        case 1 /* center */: {
-          text = " ".repeat((50 - text.length) / 2) + text;
-          break;
-        }
-      }
-      console.log(text);
-    } else {
-      printer?.printLine(text);
+    const isMult = isMultExp(text);
+    if (isMult && index > 0 && !isMultExp(exps[index - 1][0])) {
+      printer?.feed(printer.option.fontSize * 0.5);
     }
+    if (setting.printOperator && setting.align == 2 /* right */) {
+      text += ` ${isMult ? setting.defaultConfig.textAsImage ? " " : " " : "+"}`;
+    }
+    printer?.printLine(text);
     if (isMult) {
-      printer?.printLine("=" + formatNumber(sum || 0));
+      let multSumText = "=" + formatNumber(sum || 0);
+      if (setting.printOperator && setting.align == 2 /* right */) {
+        multSumText += ` +`;
+      }
+      printer?.printLine(multSumText);
       printer?.feed(printer.option.fontSize * 0.5);
     }
   };
@@ -1833,7 +2057,7 @@ function Calculator() {
         break;
       }
       case "⎙": {
-        if (!printer) {
+        if (!printer || printer instanceof LogPrinterService) {
           requestPrinter();
           return;
         }
@@ -1842,14 +2066,18 @@ function Calculator() {
           printer?.printLine(setting.deviceName, {
             align: 1 /* center */
           });
-          printer?.feed(15);
+          printer?.feed(printer.option.fontSize * 0.5);
         }
         for (const exp of exps) {
-          print(exp[0], exp[1]);
+          print(exp);
           result2 += exp[1];
         }
         printer?.printSeparator("-");
-        print(formatNumber(result2));
+        let resultText = formatNumber(result2);
+        if (setting.printOperator && setting.align == 2 /* right */) {
+          resultText += ` ${setting.defaultConfig.textAsImage ? " " : " "}`;
+        }
+        printer?.printLine(resultText);
         printer?.lineFeed(1);
         printer?.printSeparator("=");
         printer?.lineFeed(1);
@@ -1893,10 +2121,8 @@ function Calculator() {
         let ncheckIndex = checkIndex;
         if (input) {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
-          exps.push([formatted, eval(temp + input)]);
-          setCheckIndex(exps.length);
+          addResult(formatted, eval(temp + input));
           ncheckIndex = exps.length;
-          print(formatted, eval(temp + input));
           temp = tempDisplay = input = "";
         }
         setOperator(value);
@@ -1905,7 +2131,11 @@ function Calculator() {
         if (ncheckIndex >= exps.length && exps.length > 0) {
           temp = tempDisplay = input = "";
           printer?.printSeparator("-");
-          print(formatNumber(resultNumb));
+          let resultText = formatNumber(resultNumb);
+          if (setting.printOperator && setting.align == 2 /* right */) {
+            resultText += ` ${setting.defaultConfig.textAsImage ? " " : " "}`;
+          }
+          printer?.printLine(resultText);
           printer?.printSeparator("=");
           printer?.lineFeed(1);
           if (printer?.option.sharePrinter) {
@@ -1944,9 +2174,7 @@ function Calculator() {
         if (exps.length > 0) {
           const r = result();
           const formatted = `${r}×${tempDisplay}${formatNumber(parseFloat(input))}%`;
-          const rExp = [formatted, eval(`(${temp + input}) * ${r}/100`)];
-          exps.push(rExp);
-          print(rExp[0], rExp[1]);
+          addResult(formatted, eval(`(${temp + input}) * ${r}/100`));
           setCheckIndex(exps.length);
           input = temp = tempDisplay = "";
           setOperator("+");
@@ -2010,15 +2238,7 @@ function Calculator() {
       case "−": {
         if (input && input !== "-") {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
-          const rExp = [formatted, eval(temp + input)];
-          if (exps.length <= 0 && setting.deviceName) {
-            printer?.printLine(setting.deviceName, {
-              align: 1 /* center */
-            });
-            printer?.feed(15);
-          }
-          exps.push(rExp);
-          print(rExp[0], rExp[1]);
+          addResult(formatted, eval(temp + input));
           input = "";
           temp = "-";
           tempDisplay = "−";
@@ -2040,15 +2260,7 @@ function Calculator() {
       case "+": {
         if (input && input !== "-") {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
-          const rExp = [formatted, eval(temp + input)];
-          if (exps.length <= 0 && setting.deviceName) {
-            printer?.printLine(setting.deviceName, {
-              align: 1 /* center */
-            });
-            printer?.feed(15);
-          }
-          exps.push(rExp);
-          print(rExp[0], rExp[1]);
+          addResult(formatted, eval(temp + input));
           input = "";
         }
         setCheckIndex(exps.length);
@@ -2134,14 +2346,21 @@ function Calculator() {
           setOperator("");
         }
         const isZero = value[0] === "0";
-        const decimal = input.split(".")[1];
-        if (decimal && decimal.length + value.length + (isZero ? 1 : 0) > setting.maxDecimal) {
-          return;
+        const numbParts = input.split(".");
+        const isDecimal = input.indexOf(".") != -1;
+        if (isDecimal) {
+          if (numbParts[1].length + value.length + (isZero ? 1 : 0) > setting.maxDecimal) {
+            return;
+          }
+        } else {
+          if (numbParts[0].length + value.length > setting.maxDigit) {
+            return;
+          }
         }
         input += value;
         let display2 = "";
         let inputn = Number(input);
-        if (isZero && input.indexOf(".") != -1) {
+        if (isZero && isDecimal) {
           inputn = Number(input + "1");
           display2 = formatNumber(inputn);
           display2 = display2.substring(0, display2.length - 1);
@@ -2273,6 +2492,12 @@ function Calculator() {
   y2(() => {
     divRef.current?.focus();
   }, []);
+  y2(() => {
+    const container = divRef.current?.querySelector(".result-container");
+    if (container && container.scrollWidth > container.clientWidth) {
+      container.scrollLeft = container.scrollWidth;
+    }
+  }, [display]);
   const rHandlers = useLongPress({
     onClick: () => {},
     onHold: () => clickRef.current("⚙"),
@@ -2460,13 +2685,13 @@ function Calculator() {
             case "☊": {
               handlers = {
                 onClick: async () => {
-                  if (SpeechService_default.isListening) {
-                    SpeechService_default.stop();
+                  if (SpeechService2.isListening) {
+                    SpeechService2.stop();
                     return;
                   }
                   try {
-                    await SpeechService_default.requestPermission();
-                    const rprom = SpeechService_default.recognize();
+                    await SpeechService2.requestPermission();
+                    const rprom = SpeechService2.recognize();
                     setTimeout(() => {
                       listenKeyboard = false;
                       setListening(true);
@@ -2578,7 +2803,7 @@ function Calculator() {
         hideClose: true,
         onClose: () => {
           listenKeyboard = true;
-          SpeechService_default.stop();
+          SpeechService2.stop();
         },
         children: /* @__PURE__ */ jsxDEV("h4", {
           style: { textAlign: "center", margin: "0 0 1rem 0", fontSize: "1rem" },
