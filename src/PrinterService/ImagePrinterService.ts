@@ -80,7 +80,7 @@ export abstract class ImagePrinterService implements IPrinterService {
                 const y = i * lineHeight + Math.floor((lineHeight - textHeight) / 3);
                 const text = lines[i];
                 ctx.fillText(text, x, y);
-                if (true) {
+                if (textStyle.font.fontStyle & FontMode.underline) {
                     const textWidth = ctx.measureText(text).width;
                     const y2 = y + lineHeight - Math.ceil((lineHeight - textHeight) / 2);
                     ctx.beginPath();

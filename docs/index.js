@@ -627,7 +627,7 @@ class ImagePrinterService {
         const y3 = i3 * lineHeight + Math.floor((lineHeight - textHeight) / 3);
         const text2 = lines[i3];
         ctx2.fillText(text2, x2, y3);
-        if (true) {
+        if (textStyle.font.fontStyle & 4 /* underline */) {
           const textWidth = ctx2.measureText(text2).width;
           const y22 = y3 + lineHeight - Math.ceil((lineHeight - textHeight) / 2);
           ctx2.beginPath();
