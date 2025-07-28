@@ -1,14 +1,15 @@
 import { CalculatorConfig } from "../Model/CalculatorConfig";
+import { copy } from "../Utility/copy";
 
 let isPersisted = false;
 class LocalStorageService<T extends object> {
     constructor(private _type: new () => T, private _key: string) { }
     public get() {
         const d = localStorage.getItem(this._key);
-        const data = new this._type();
+        let data = new this._type();
         if (d) {
             const dat = JSON.parse(d);
-            Object.assign(data, dat);
+            data = copy(data, dat, true);
         }
         return data;
     }
