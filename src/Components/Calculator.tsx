@@ -251,6 +251,10 @@ export function Calculator() {
           display = formatNumber(inputn);
         }
 
+        if (!input) {
+          setTimeout(() => { setShowAC(true); }, 100);
+        }
+
         setDisplay(display);
         break;
       }

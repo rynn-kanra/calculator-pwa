@@ -2192,6 +2192,11 @@ function Calculator() {
         } else {
           display2 = formatNumber(inputn);
         }
+        if (!input) {
+          setTimeout(() => {
+            setShowAC(true);
+          }, 100);
+        }
         setDisplay(display2);
         break;
       }
