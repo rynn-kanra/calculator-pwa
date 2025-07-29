@@ -26,4 +26,6 @@ body {
     user-zoom: initial;
     height: 100dvh;
     overflow: hidden;
+    overscroll-behavior-y: contain;
+    overscroll-behavior: none;
 }

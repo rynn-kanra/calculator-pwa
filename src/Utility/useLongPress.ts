@@ -17,18 +17,20 @@ export function useLongPress({
 }: UseLongPressOptions) {
   const timerRef = useRef<number | null>(null);
   const intervalRef = useRef<number | null>(null);
-  const triggered = useRef(false);
+  const triggered = useRef<boolean | null>(false);
 
   const start = () => {
     triggered.current = false;
 
-    timerRef.current = window.setTimeout(() => {
-      triggered.current = true;
-      if (onHold) onHold();
-      if (repeat && onHold) {
-        intervalRef.current = window.setInterval(onHold, interval);
-      }
-    }, delay);
+    if (!timerRef.current) {
+      timerRef.current = window.setTimeout(() => {
+        triggered.current = true;
+        if (onHold) onHold();
+        if (repeat && onHold) {
+          intervalRef.current = window.setInterval(onHold, interval);
+        }
+      }, delay);
+    }
   };
 
   const stop = () => {
@@ -48,7 +50,10 @@ export function useLongPress({
   };
 
   const handlePointerUp = () => {
-    if (!triggered.current) onClick(); // short press
+    if (triggered.current == false) {
+      onClick(); // short press
+      triggered.current = null;
+    }
     stop();
   };
 
@@ -59,6 +64,8 @@ export function useLongPress({
   return {
     onPointerDown: handlePointerDown,
     onPointerUp: handlePointerUp,
+    onTouchStart: handlePointerDown,
+    onTouchEnd: handlePointerUp,
     onPointerLeave: stop,
     onPointerCancel: stop,
   };

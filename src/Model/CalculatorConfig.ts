@@ -9,6 +9,7 @@ export class CalculatorConfig {
   public keepScreenAwake: boolean = true;
   public align: TextAlign = TextAlign.right;
   public printOperator: boolean = false;
+  public show3Zero: boolean = true;
   public defaultConfig: PrinterConfig = new PrinterConfig();
   public printerConfig: { [key: string]: PrinterConfig } = {};
 

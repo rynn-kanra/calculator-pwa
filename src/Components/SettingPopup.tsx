@@ -25,7 +25,7 @@ export function SettingPopup(setting: SettingPopupProps) {
     SettingService.set(data);
     setting.onClose && setting.onClose(data);
   };
-  return (<BottomPopup isOpen={setting.isOpen} onClose={onClose} contentStyle={{ height: '100vh', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0' }}>
+  return (<BottomPopup isOpen={setting.isOpen} onClose={onClose} contentStyle={{ height: '100dvh', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0' }}>
     <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>SETTING</h4>
     <div style={{ overflow: 'auto', height: 'calc(100% - 2rem)', padding: '0 1rem', boxSizing: 'border-box' }}>
       <div
@@ -42,6 +42,13 @@ export function SettingPopup(setting: SettingPopupProps) {
         <div>Maks. digit</div>
         <div>
           <input class='form' type='number' name="max-digit" step="1" min="6" max="15" value={data.maxDigit} onInput={(e) => { data.maxDigit = parseInt(e.target.value); }} />
+        </div>
+        <div>Tombol 0 tambahan</div>
+        <div class="input-container">
+          <select class='form' value={data.show3Zero ? '000' : '00'} onInput={(e) => { data.show3Zero = e.target?.value == "000"; }}>
+            <option value={'00'}>00</option>
+            <option value={'000'}>000</option>
+          </select>
         </div>
         <div style={{ gridColumn: 'span 2' }}>
           Nama device

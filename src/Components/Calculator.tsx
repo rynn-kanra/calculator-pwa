@@ -93,7 +93,7 @@ export function Calculator() {
     if (setting.printOperator && setting.align == TextAlign.right) {
       text += ` ${(isMult ? (setting.defaultConfig.textAsImage ? '\u2007' : ' ') : "+")}`;
     }
-    
+
     printer?.printLine(text);
 
     if (isMult) {
@@ -203,7 +203,7 @@ export function Calculator() {
       }
       case "=": {
         let ncheckIndex = checkIndex;
-        if (input) {
+        if (input && input !== "-") {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
           addResult(formatted, eval(temp + input));
           ncheckIndex = exps.length;
@@ -235,6 +235,10 @@ export function Calculator() {
         if (input) {
           input = input.substring(0, input.length - 1);
         }
+        if (input === "-") {
+          input = '';
+        }
+
         let display = '';
         let inputn = Number(input);
         const isZero = '0.'.includes(input[input.length - 1]);
@@ -428,7 +432,7 @@ export function Calculator() {
         break;
       }
       case "CHECK": {
-        openCheckView(o => !o);
+        openCheckView(true);
         break;
       }
       case "⚙": {
@@ -444,7 +448,15 @@ export function Calculator() {
           temp = tempDisplay = "";
           setOperator("");
         }
+
         const isZero = value[0] === '0';
+        if (isZero && (!input || input === "-")) {
+          input = "";
+          setDisplay("");
+          setShowAC(false);
+          return;
+        }
+
         const numbParts = input.split('.');
         const isDecimal = input.indexOf('.') != -1;
         if (isDecimal) {
@@ -457,7 +469,6 @@ export function Calculator() {
             return;
           }
         }
-
         input += value;
         let display = '';
         let inputn = Number(input);
@@ -570,7 +581,7 @@ export function Calculator() {
     '7', '8', '9', '×',
     '4', '5', '6', '−',
     '1', '2', '3', '+',
-    '0', '000', '.', '='
+    '0', setting.show3Zero ? '000' : '00', '.', '='
   ];
 
   useEffect(() => {
@@ -608,7 +619,7 @@ export function Calculator() {
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
       style={{
-        height: '100vh',
+        height: '100dvh',
         display: 'flex',
         userSelect: 'none',
         touchAction: 'manipulation',
@@ -618,34 +629,32 @@ export function Calculator() {
       }}
     >
       {/* Display Area */}
-      <div
-        class='result-container'
-        {...rHandlers}
+      <div {...rHandlers}
         style={{
-          padding: '1rem 1.5rem 1rem 1rem',
           fontSize: '2.5rem',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1.5rem',
           minHeight: '4rem',
           lineHeight: '4rem',
-          textAlign: 'right',
-          overflow: "auto",
           backgroundColor: '#f0f0f0',
-          position: 'relative',
           borderBottom: '1px solid #ccc',
         }}
       >
-        <span>{display || '0'}</span>
-        {operator && (
-          <span
-            style={{
-              position: 'absolute',
-              right: '0.25rem',
-              top: '1rem',
-              color: '#888',
-              fontSize: '1.5rem',
-            }}>
-            {operator}
-          </span>
-        )}
+        <div class='result-container' style={{
+          textAlign: 'right',
+          overflow: "auto",
+          padding: '1rem 0 1rem 1rem',
+        }}>
+          {display || '0'}
+        </div>
+        <div style={{
+          textAlign: "center",
+          color: '#888',
+          fontSize: '1.5rem',
+          lineHeight: '4'
+        }}>
+          {operator}
+        </div>
       </div>
       <span
         style={{
@@ -653,8 +662,7 @@ export function Calculator() {
           left: '4px',
           top: '4px',
           color: '#888',
-          fontSize: '1rem',
-          lineHeight: '1.2rem'
+          fontSize: '1rem'
         }}>
         {checkIndex < exps.length && exps.length > 0 && (<span>{checkIndex + 1}/</span>)}{exps.length}
       </span>
@@ -678,7 +686,7 @@ export function Calculator() {
           let isNumber = '0123456789.'.includes(b[0]);
           let fontSize = isNumber && b.length < 3 ? '2.5rem' : '2rem';
           let handlers = {
-            onClick: () => handleClick(b)
+            onClick: () => clickRef.current(b)
           } as any;
           switch (b) {
             case 'AC': {
@@ -813,6 +821,16 @@ export function Calculator() {
               }
               break;
             }
+            case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
+              handlers = useLongPress({
+                onClick: () => clickRef.current(b),
+                onHold: () => clickRef.current(b),
+                repeat: true,
+                delay: 400,
+                interval: 100,
+              });
+              break;
+            }
           }
 
           return (show && <button
@@ -836,7 +854,7 @@ export function Calculator() {
       </div>
 
       {/* Check Popup Area */}
-      <BottomPopup isOpen={isCheckView} hideClose={true} contentStyle={{ height: 'calc(100vh - 6rem)', backgroundColor: '#f0f0f0', padding: '1rem 0' }} onClose={() => { openCheckView(false); }}>
+      <BottomPopup isOpen={isCheckView} hideClose={true} contentStyle={{ height: 'calc(100dvh - 6rem)', backgroundColor: '#f0f0f0', padding: '1rem 0' }} onClose={() => { openCheckView(false); }}>
         <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>CHECK</h4>
         <div style={{ overflow: 'auto', height: 'calc(100% - 2rem)', padding: '0 1rem' }}>
           <div

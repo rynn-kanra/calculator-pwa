@@ -1411,6 +1411,7 @@ class CalculatorConfig {
   keepScreenAwake = true;
   align = 2 /* right */;
   printOperator = false;
+  show3Zero = true;
   defaultConfig = new PrinterConfig;
   printerConfig = {};
   apply(printer) {
@@ -1561,14 +1562,16 @@ function useLongPress({
   const triggered = A2(false);
   const start = () => {
     triggered.current = false;
-    timerRef.current = window.setTimeout(() => {
-      triggered.current = true;
-      if (onHold)
-        onHold();
-      if (repeat && onHold) {
-        intervalRef.current = window.setInterval(onHold, interval);
-      }
-    }, delay3);
+    if (!timerRef.current) {
+      timerRef.current = window.setTimeout(() => {
+        triggered.current = true;
+        if (onHold)
+          onHold();
+        if (repeat && onHold) {
+          intervalRef.current = window.setInterval(onHold, interval);
+        }
+      }, delay3);
+    }
   };
   const stop = () => {
     if (timerRef.current) {
@@ -1586,8 +1589,10 @@ function useLongPress({
     start();
   };
   const handlePointerUp = () => {
-    if (!triggered.current)
+    if (triggered.current == false) {
       onClick();
+      triggered.current = null;
+    }
     stop();
   };
   y2(() => {
@@ -1596,6 +1601,8 @@ function useLongPress({
   return {
     onPointerDown: handlePointerDown,
     onPointerUp: handlePointerUp,
+    onTouchStart: handlePointerDown,
+    onTouchEnd: handlePointerUp,
     onPointerLeave: stop,
     onPointerCancel: stop
   };
@@ -1654,7 +1661,7 @@ function SettingPopup(setting) {
   return /* @__PURE__ */ jsxDEV(BottomPopup_default, {
     isOpen: setting.isOpen,
     onClose,
-    contentStyle: { height: "100vh", fontSize: "1rem", backgroundColor: "#f0f0f0", padding: "1rem 0" },
+    contentStyle: { height: "100dvh", fontSize: "1rem", backgroundColor: "#f0f0f0", padding: "1rem 0" },
     children: [
       /* @__PURE__ */ jsxDEV("h4", {
         style: { textAlign: "center", margin: "0 0 1rem 0" },
@@ -1703,6 +1710,29 @@ function SettingPopup(setting) {
                   data.maxDigit = parseInt(e3.target.value);
                 }
               }, undefined, false, undefined, this)
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsxDEV("div", {
+              children: "Tombol 0 tambahan"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsxDEV("div", {
+              class: "input-container",
+              children: /* @__PURE__ */ jsxDEV("select", {
+                class: "form",
+                value: data.show3Zero ? "000" : "00",
+                onInput: (e3) => {
+                  data.show3Zero = e3.target?.value == "000";
+                },
+                children: [
+                  /* @__PURE__ */ jsxDEV("option", {
+                    value: "00",
+                    children: "00"
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsxDEV("option", {
+                    value: "000",
+                    children: "000"
+                  }, undefined, false, undefined, this)
+                ]
+              }, undefined, true, undefined, this)
             }, undefined, false, undefined, this),
             /* @__PURE__ */ jsxDEV("div", {
               style: { gridColumn: "span 2" },
@@ -2118,7 +2148,7 @@ function Calculator() {
       }
       case "=": {
         let ncheckIndex = checkIndex;
-        if (input) {
+        if (input && input !== "-") {
           const formatted = tempDisplay + formatNumber(parseFloat(input));
           addResult(formatted, eval(temp + input));
           ncheckIndex = exps.length;
@@ -2148,6 +2178,9 @@ function Calculator() {
       case "⌫": {
         if (input) {
           input = input.substring(0, input.length - 1);
+        }
+        if (input === "-") {
+          input = "";
         }
         let display2 = "";
         let inputn = Number(input);
@@ -2329,7 +2362,7 @@ function Calculator() {
         break;
       }
       case "CHECK": {
-        openCheckView((o3) => !o3);
+        openCheckView(true);
         break;
       }
       case "⚙": {
@@ -2345,6 +2378,12 @@ function Calculator() {
           setOperator("");
         }
         const isZero = value[0] === "0";
+        if (isZero && (!input || input === "-")) {
+          input = "";
+          setDisplay("");
+          setShowAC(false);
+          return;
+        }
         const numbParts = input.split(".");
         const isDecimal = input.indexOf(".") != -1;
         if (isDecimal) {
@@ -2477,7 +2516,7 @@ function Calculator() {
     "3",
     "+",
     "0",
-    "000",
+    setting.show3Zero ? "000" : "00",
     ".",
     "="
   ];
@@ -2509,7 +2548,7 @@ function Calculator() {
     onKeyDown: handleKeyDown,
     onPaste: handlePaste,
     style: {
-      height: "100vh",
+      height: "100dvh",
       display: "flex",
       userSelect: "none",
       touchAction: "manipulation",
@@ -2519,30 +2558,32 @@ function Calculator() {
     },
     children: [
       /* @__PURE__ */ jsxDEV("div", {
-        class: "result-container",
         ...rHandlers,
         style: {
-          padding: "1rem 1.5rem 1rem 1rem",
           fontSize: "2.5rem",
+          display: "grid",
+          gridTemplateColumns: "1fr 1.5rem",
           minHeight: "4rem",
           lineHeight: "4rem",
-          textAlign: "right",
-          overflow: "auto",
           backgroundColor: "#f0f0f0",
-          position: "relative",
           borderBottom: "1px solid #ccc"
         },
         children: [
-          /* @__PURE__ */ jsxDEV("span", {
+          /* @__PURE__ */ jsxDEV("div", {
+            class: "result-container",
+            style: {
+              textAlign: "right",
+              overflow: "auto",
+              padding: "1rem 0 1rem 1rem"
+            },
             children: display || "0"
           }, undefined, false, undefined, this),
-          operator && /* @__PURE__ */ jsxDEV("span", {
+          /* @__PURE__ */ jsxDEV("div", {
             style: {
-              position: "absolute",
-              right: "0.25rem",
-              top: "1rem",
+              textAlign: "center",
               color: "#888",
-              fontSize: "1.5rem"
+              fontSize: "1.5rem",
+              lineHeight: "4"
             },
             children: operator
           }, undefined, false, undefined, this)
@@ -2554,8 +2595,7 @@ function Calculator() {
           left: "4px",
           top: "4px",
           color: "#888",
-          fontSize: "1rem",
-          lineHeight: "1.2rem"
+          fontSize: "1rem"
         },
         children: [
           checkIndex < exps.length && exps.length > 0 && /* @__PURE__ */ jsxDEV("span", {
@@ -2584,7 +2624,7 @@ function Calculator() {
           let isNumber2 = "0123456789.".includes(b[0]);
           let fontSize = isNumber2 && b.length < 3 ? "2.5rem" : "2rem";
           let handlers = {
-            onClick: () => handleClick(b)
+            onClick: () => clickRef.current(b)
           };
           switch (b) {
             case "AC": {
@@ -2714,6 +2754,25 @@ function Calculator() {
               };
               break;
             }
+            case "0":
+            case "1":
+            case "2":
+            case "3":
+            case "4":
+            case "5":
+            case "6":
+            case "7":
+            case "8":
+            case "9": {
+              handlers = useLongPress({
+                onClick: () => clickRef.current(b),
+                onHold: () => clickRef.current(b),
+                repeat: true,
+                delay: 400,
+                interval: 100
+              });
+              break;
+            }
           }
           return show && /* @__PURE__ */ jsxDEV("button", {
             class: "press-button",
@@ -2735,7 +2794,7 @@ function Calculator() {
       /* @__PURE__ */ jsxDEV(BottomPopup_default, {
         isOpen: isCheckView,
         hideClose: true,
-        contentStyle: { height: "calc(100vh - 6rem)", backgroundColor: "#f0f0f0", padding: "1rem 0" },
+        contentStyle: { height: "calc(100dvh - 6rem)", backgroundColor: "#f0f0f0", padding: "1rem 0" },
         onClose: () => {
           openCheckView(false);
         },
