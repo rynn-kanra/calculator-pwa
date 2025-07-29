@@ -2635,6 +2635,7 @@ function Calculator() {
             }
             case "CE": {
               show = !showAC;
+              fontSize = "1.5rem";
               handlers = useLongPress({
                 onClick: () => clickRef.current(b),
                 onHold: () => clickRef.current("AC"),
