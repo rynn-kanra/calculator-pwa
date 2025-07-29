@@ -2263,7 +2263,10 @@ function Calculator() {
       case "±": {
         if (!input)
           return;
-        if (input[0] !== "-") {
+        if (temp === "-") {
+          temp = tempDisplay = "";
+          setOperator("+");
+        } else if (input[0] !== "-") {
           input = "-" + input;
           setDisplay("−" + display);
         } else {
@@ -2723,7 +2726,8 @@ function Calculator() {
               fontSize = "1rem";
               break;
             }
-            case "%": {
+            case "%":
+            case "±": {
               fontSize = "1.5rem";
               break;
             }

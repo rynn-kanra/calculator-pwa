@@ -327,7 +327,11 @@ export function Calculator() {
       }
       case "±": {
         if (!input) return;
-        if (input[0] !== '-') {
+        if (temp === '-') {
+          temp = tempDisplay = '';
+          setOperator('+');
+        }
+        else if (input[0] !== '-') {
           input = "-" + input;
           setDisplay("−" + display);
         }
@@ -786,7 +790,8 @@ export function Calculator() {
               //gridRow = 'span 2';
               break;
             }
-            case '%': {
+            case '%':
+            case '±': {
               fontSize = '1.5rem';
               break;
             }
