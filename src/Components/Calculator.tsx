@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterService';
-import { IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
+import { FontMode, IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
 import ScreenService from '../Services/ScreenService';
@@ -162,7 +162,7 @@ export function Calculator() {
         if (setting.printOperator && setting.align == TextAlign.right) {
           resultText += ` ${(setting.defaultConfig.textAsImage ? '\u2007' : ' ')}`;
         }
-        printer?.printLine(resultText);
+        printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
         printer?.lineFeed(1);
         printer?.printSeparator("=");
         printer?.lineFeed(1);
@@ -220,7 +220,7 @@ export function Calculator() {
           if (setting.printOperator && setting.align == TextAlign.right) {
             resultText += ` ${(setting.defaultConfig.textAsImage ? '\u2007' : ' ')}`;
           }
-          printer?.printLine(resultText);
+          printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
           printer?.printSeparator("=");
           printer?.lineFeed(1);
           if (printer?.option.sharePrinter) {

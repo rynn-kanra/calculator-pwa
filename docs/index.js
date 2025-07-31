@@ -67,13 +67,13 @@ function M(n2) {
 }
 function $() {
   for (var n2, u2, t2, r3, o2, f2, c2, s2 = 1;i.length; )
-    i.length > s2 && i.sort(e), n2 = i.shift(), s2 = i.length, n2.__d && (t2 = undefined, o2 = (r3 = (u2 = n2).__v).__e, f2 = [], c2 = [], u2.__P && ((t2 = d({}, r3)).__v = r3.__v + 1, l.vnode && l.vnode(t2), O(u2.__P, t2, r3, u2.__n, u2.__P.namespaceURI, 32 & r3.__u ? [o2] : null, f2, o2 == null ? S(r3) : o2, !!(32 & r3.__u), c2), t2.__v = r3.__v, t2.__.__k[t2.__i] = t2, N(f2, t2, c2), t2.__e != o2 && C(t2)));
+    i.length > s2 && i.sort(e), n2 = i.shift(), s2 = i.length, n2.__d && (t2 = undefined, o2 = (r3 = (u2 = n2).__v).__e, f2 = [], c2 = [], u2.__P && ((t2 = d({}, r3)).__v = r3.__v + 1, l.vnode && l.vnode(t2), O(u2.__P, t2, r3, u2.__n, u2.__P.namespaceURI, 32 & r3.__u ? [o2] : null, f2, o2 == null ? S(r3) : o2, !!(32 & r3.__u), c2), t2.__v = r3.__v, t2.__.__k[t2.__i] = t2, z(f2, t2, c2), t2.__e != o2 && C(t2)));
   $.__r = 0;
 }
 function I(n2, l2, u2, t2, i2, r3, o2, e2, f2, c2, s2) {
   var a2, h2, y2, w2, d2, g2, _2 = t2 && t2.__k || v, m2 = l2.length;
   for (f2 = P(u2, l2, _2, f2, m2), a2 = 0;a2 < m2; a2++)
-    (y2 = u2.__k[a2]) != null && (h2 = y2.__i == -1 ? p : _2[y2.__i] || p, y2.__i = a2, g2 = O(n2, y2, h2, i2, r3, o2, e2, f2, c2, s2), w2 = y2.__e, y2.ref && h2.ref != y2.ref && (h2.ref && B(h2.ref, null, y2), s2.push(y2.ref, y2.__c || w2, y2)), d2 == null && w2 != null && (d2 = w2), 4 & y2.__u || h2.__k === y2.__k ? f2 = A(y2, f2, n2) : typeof y2.type == "function" && g2 !== undefined ? f2 = g2 : w2 && (f2 = w2.nextSibling), y2.__u &= -7);
+    (y2 = u2.__k[a2]) != null && (h2 = y2.__i == -1 ? p : _2[y2.__i] || p, y2.__i = a2, g2 = O(n2, y2, h2, i2, r3, o2, e2, f2, c2, s2), w2 = y2.__e, y2.ref && h2.ref != y2.ref && (h2.ref && q(h2.ref, null, y2), s2.push(y2.ref, y2.__c || w2, y2)), d2 == null && w2 != null && (d2 = w2), 4 & y2.__u || h2.__k === y2.__k ? f2 = A(y2, f2, n2) : typeof y2.type == "function" && g2 !== undefined ? f2 = g2 : w2 && (f2 = w2.nextSibling), y2.__u &= -7);
   return u2.__e = d2, f2;
 }
 function P(n2, l2, u2, t2, i2) {
@@ -82,7 +82,7 @@ function P(n2, l2, u2, t2, i2) {
     (o2 = l2[r3]) != null && typeof o2 != "boolean" && typeof o2 != "function" ? (f2 = r3 + h2, (o2 = n2.__k[r3] = typeof o2 == "string" || typeof o2 == "number" || typeof o2 == "bigint" || o2.constructor == String ? m(null, o2, null, null, null) : w(o2) ? m(k, { children: o2 }, null, null, null) : o2.constructor == null && o2.__b > 0 ? m(o2.type, o2.props, o2.key, o2.ref ? o2.ref : null, o2.__v) : o2).__ = n2, o2.__b = n2.__b + 1, e2 = null, (c2 = o2.__i = L(o2, u2, f2, a2)) != -1 && (a2--, (e2 = u2[c2]) && (e2.__u |= 2)), e2 == null || e2.__v == null ? (c2 == -1 && (i2 > s2 ? h2-- : i2 < s2 && h2++), typeof o2.type != "function" && (o2.__u |= 4)) : c2 != f2 && (c2 == f2 - 1 ? h2-- : c2 == f2 + 1 ? h2++ : (c2 > f2 ? h2-- : h2++, o2.__u |= 4))) : n2.__k[r3] = null;
   if (a2)
     for (r3 = 0;r3 < s2; r3++)
-      (e2 = u2[r3]) != null && (2 & e2.__u) == 0 && (e2.__e == t2 && (t2 = S(e2)), D(e2, e2));
+      (e2 = u2[r3]) != null && (2 & e2.__u) == 0 && (e2.__e == t2 && (t2 = S(e2)), B(e2, e2));
   return t2;
 }
 function A(n2, l2, u2) {
@@ -99,14 +99,22 @@ function A(n2, l2, u2) {
   return l2;
 }
 function L(n2, l2, u2, t2) {
-  var i2, r3, o2, e2 = n2.key, f2 = n2.type, c2 = l2[u2], s2 = c2 != null && (2 & c2.__u) == 0;
-  if (c2 === null && n2.key == null || s2 && e2 == c2.key && f2 == c2.type)
+  var i2, r3, o2 = n2.key, e2 = n2.type, f2 = l2[u2];
+  if (f2 === null && n2.key == null || f2 && o2 == f2.key && e2 == f2.type && (2 & f2.__u) == 0)
     return u2;
-  if (t2 > (s2 ? 1 : 0)) {
-    for (i2 = u2 - 1, r3 = u2 + 1;i2 >= 0 || r3 < l2.length; )
-      if ((c2 = l2[o2 = i2 >= 0 ? i2-- : r3++]) != null && (2 & c2.__u) == 0 && e2 == c2.key && f2 == c2.type)
-        return o2;
-  }
+  if (t2 > (f2 != null && (2 & f2.__u) == 0 ? 1 : 0))
+    for (i2 = u2 - 1, r3 = u2 + 1;i2 >= 0 || r3 < l2.length; ) {
+      if (i2 >= 0) {
+        if ((f2 = l2[i2]) && (2 & f2.__u) == 0 && o2 == f2.key && e2 == f2.type)
+          return i2;
+        i2--;
+      }
+      if (r3 < l2.length) {
+        if ((f2 = l2[r3]) && (2 & f2.__u) == 0 && o2 == f2.key && e2 == f2.type)
+          return r3;
+        r3++;
+      }
+    }
   return -1;
 }
 function T(n2, l2, u2) {
@@ -159,7 +167,7 @@ function O(n2, u2, t2, i2, r3, o2, e2, f2, c2, s2) {
   n:
     if (typeof j2 == "function")
       try {
-        if (b = u2.props, S2 = "prototype" in j2 && j2.prototype.render, C2 = (a2 = j2.contextType) && i2[a2.__c], M2 = a2 ? C2 ? C2.props.value : a2.__ : i2, t2.__c ? m2 = (h2 = u2.__c = t2.__c).__ = h2.__E : (S2 ? u2.__c = h2 = new j2(b, M2) : (u2.__c = h2 = new x(b, M2), h2.constructor = j2, h2.render = E), C2 && C2.sub(h2), h2.props = b, h2.state || (h2.state = {}), h2.context = M2, h2.__n = i2, p2 = h2.__d = true, h2.__h = [], h2._sb = []), S2 && h2.__s == null && (h2.__s = h2.state), S2 && j2.getDerivedStateFromProps != null && (h2.__s == h2.state && (h2.__s = d({}, h2.__s)), d(h2.__s, j2.getDerivedStateFromProps(b, h2.__s))), v2 = h2.props, y2 = h2.state, h2.__v = u2, p2)
+        if (b = u2.props, S2 = "prototype" in j2 && j2.prototype.render, C2 = (a2 = j2.contextType) && i2[a2.__c], M2 = a2 ? C2 ? C2.props.value : a2.__ : i2, t2.__c ? m2 = (h2 = u2.__c = t2.__c).__ = h2.__E : (S2 ? u2.__c = h2 = new j2(b, M2) : (u2.__c = h2 = new x(b, M2), h2.constructor = j2, h2.render = D), C2 && C2.sub(h2), h2.props = b, h2.state || (h2.state = {}), h2.context = M2, h2.__n = i2, p2 = h2.__d = true, h2.__h = [], h2._sb = []), S2 && h2.__s == null && (h2.__s = h2.state), S2 && j2.getDerivedStateFromProps != null && (h2.__s == h2.state && (h2.__s = d({}, h2.__s)), d(h2.__s, j2.getDerivedStateFromProps(b, h2.__s))), v2 = h2.props, y2 = h2.state, h2.__v = u2, p2)
           S2 && j2.getDerivedStateFromProps == null && h2.componentWillMount != null && h2.componentWillMount(), S2 && h2.componentDidMount != null && h2.__h.push(h2.componentDidMount);
         else {
           if (S2 && j2.getDerivedStateFromProps == null && b !== v2 && h2.componentWillReceiveProps != null && h2.componentWillReceiveProps(b, M2), !h2.__e && h2.shouldComponentUpdate != null && h2.shouldComponentUpdate(b, h2.__s, M2) === false || u2.__v == t2.__v) {
@@ -182,32 +190,27 @@ function O(n2, u2, t2, i2, r3, o2, e2, f2, c2, s2) {
           do {
             h2.__d = false, P2 && P2(u2), a2 = h2.render(h2.props, h2.state, h2.context), h2.state = h2.__s;
           } while (h2.__d && ++A2 < 25);
-        h2.state = h2.__s, h2.getChildContext != null && (i2 = d(d({}, i2), h2.getChildContext())), S2 && !p2 && h2.getSnapshotBeforeUpdate != null && (_2 = h2.getSnapshotBeforeUpdate(v2, y2)), L2 = a2, a2 != null && a2.type === k && a2.key == null && (L2 = V(a2.props.children)), f2 = I(n2, w(L2) ? L2 : [L2], u2, t2, i2, r3, o2, e2, f2, c2, s2), h2.base = u2.__e, u2.__u &= -161, h2.__h.length && e2.push(h2), m2 && (h2.__E = h2.__ = null);
+        h2.state = h2.__s, h2.getChildContext != null && (i2 = d(d({}, i2), h2.getChildContext())), S2 && !p2 && h2.getSnapshotBeforeUpdate != null && (_2 = h2.getSnapshotBeforeUpdate(v2, y2)), L2 = a2, a2 != null && a2.type === k && a2.key == null && (L2 = N(a2.props.children)), f2 = I(n2, w(L2) ? L2 : [L2], u2, t2, i2, r3, o2, e2, f2, c2, s2), h2.base = u2.__e, u2.__u &= -161, h2.__h.length && e2.push(h2), m2 && (h2.__E = h2.__ = null);
       } catch (n3) {
         if (u2.__v = null, c2 || o2 != null)
           if (n3.then) {
             for (u2.__u |= c2 ? 160 : 128;f2 && f2.nodeType == 8 && f2.nextSibling; )
               f2 = f2.nextSibling;
             o2[o2.indexOf(f2)] = null, u2.__e = f2;
-          } else {
+          } else
             for (T2 = o2.length;T2--; )
               g(o2[T2]);
-            z(u2);
-          }
         else
-          u2.__e = t2.__e, u2.__k = t2.__k, n3.then || z(u2);
+          u2.__e = t2.__e, u2.__k = t2.__k;
         l.__e(n3, u2, t2);
       }
     else
-      o2 == null && u2.__v == t2.__v ? (u2.__k = t2.__k, u2.__e = t2.__e) : f2 = u2.__e = q(t2.__e, u2, t2, i2, r3, o2, e2, c2, s2);
+      o2 == null && u2.__v == t2.__v ? (u2.__k = t2.__k, u2.__e = t2.__e) : f2 = u2.__e = V(t2.__e, u2, t2, i2, r3, o2, e2, c2, s2);
   return (a2 = l.diffed) && a2(u2), 128 & u2.__u ? undefined : f2;
 }
-function z(n2) {
-  n2 && n2.__c && (n2.__c.__e = true), n2 && n2.__k && n2.__k.forEach(z);
-}
-function N(n2, u2, t2) {
+function z(n2, u2, t2) {
   for (var i2 = 0;i2 < t2.length; i2++)
-    B(t2[i2], t2[++i2], t2[++i2]);
+    q(t2[i2], t2[++i2], t2[++i2]);
   l.__c && l.__c(u2, n2), n2.some(function(u3) {
     try {
       n2 = u3.__h, u3.__h = [], n2.some(function(n3) {
@@ -218,10 +221,10 @@ function N(n2, u2, t2) {
     }
   });
 }
-function V(n2) {
-  return typeof n2 != "object" || n2 == null || n2.__b && n2.__b > 0 ? n2 : w(n2) ? n2.map(V) : d({}, n2);
+function N(n2) {
+  return typeof n2 != "object" || n2 == null || n2.__b && n2.__b > 0 ? n2 : w(n2) ? n2.map(N) : d({}, n2);
 }
-function q(u2, t2, i2, r3, o2, e2, f2, c2, s2) {
+function V(u2, t2, i2, r3, o2, e2, f2, c2, s2) {
   var a2, h2, v2, y2, d2, _2, m2, b = i2.props, k2 = t2.props, x2 = t2.type;
   if (x2 == "svg" ? o2 = "http://www.w3.org/2000/svg" : x2 == "math" ? o2 = "http://www.w3.org/1998/Math/MathML" : o2 || (o2 = "http://www.w3.org/1999/xhtml"), e2 != null) {
     for (a2 = 0;a2 < e2.length; a2++)
@@ -262,7 +265,7 @@ function q(u2, t2, i2, r3, o2, e2, f2, c2, s2) {
   }
   return u2;
 }
-function B(n2, u2, t2) {
+function q(n2, u2, t2) {
   try {
     if (typeof n2 == "function") {
       var i2 = typeof n2.__u == "function";
@@ -273,9 +276,9 @@ function B(n2, u2, t2) {
     l.__e(n3, t2);
   }
 }
-function D(n2, u2, t2) {
+function B(n2, u2, t2) {
   var i2, r3;
-  if (l.unmount && l.unmount(n2), (i2 = n2.ref) && (i2.current && i2.current != n2.__e || B(i2, null, u2)), (i2 = n2.__c) != null) {
+  if (l.unmount && l.unmount(n2), (i2 = n2.ref) && (i2.current && i2.current != n2.__e || q(i2, null, u2)), (i2 = n2.__c) != null) {
     if (i2.componentWillUnmount)
       try {
         i2.componentWillUnmount();
@@ -286,15 +289,15 @@ function D(n2, u2, t2) {
   }
   if (i2 = n2.__k)
     for (r3 = 0;r3 < i2.length; r3++)
-      i2[r3] && D(i2[r3], u2, t2 || typeof n2.type != "function");
+      i2[r3] && B(i2[r3], u2, t2 || typeof n2.type != "function");
   t2 || g(n2.__e), n2.__c = n2.__ = n2.__e = undefined;
 }
-function E(n2, l2, u2) {
+function D(n2, l2, u2) {
   return this.constructor(n2, u2);
 }
-function G(u2, t2, i2) {
+function E(u2, t2, i2) {
   var r3, o2, e2, f2;
-  t2 == document && (t2 = document.documentElement), l.__ && l.__(u2, t2), o2 = (r3 = typeof i2 == "function") ? null : i2 && i2.__k || t2.__k, e2 = [], f2 = [], O(t2, u2 = (!r3 && i2 || t2).__k = _(k, null, [u2]), o2 || p, p, t2.namespaceURI, !r3 && i2 ? [i2] : o2 ? null : t2.firstChild ? n.call(t2.childNodes) : null, e2, !r3 && i2 ? i2 : o2 ? o2.__e : t2.firstChild, r3, f2), N(e2, u2, f2);
+  t2 == document && (t2 = document.documentElement), l.__ && l.__(u2, t2), o2 = (r3 = typeof i2 == "function") ? null : i2 && i2.__k || t2.__k, e2 = [], f2 = [], O(t2, u2 = (!r3 && i2 || t2).__k = _(k, null, [u2]), o2 || p, p, t2.namespaceURI, !r3 && i2 ? [i2] : o2 ? null : t2.firstChild ? n.call(t2.childNodes) : null, e2, !r3 && i2 ? i2 : o2 ? o2.__e : t2.firstChild, r3, f2), z(e2, u2, f2);
 }
 n = v.slice, l = { __e: function(n2, l2, u2, t2) {
   for (var i2, r3, o2;l2 = l2.__; )
@@ -2106,7 +2109,7 @@ function Calculator() {
         if (setting.printOperator && setting.align == 2 /* right */) {
           resultText += ` ${setting.defaultConfig.textAsImage ? " " : " "}`;
         }
-        printer?.printLine(resultText);
+        printer?.printLine(resultText, { font: { fontStyle: 1 /* bold */ } });
         printer?.lineFeed(1);
         printer?.printSeparator("=");
         printer?.lineFeed(1);
@@ -2164,7 +2167,7 @@ function Calculator() {
           if (setting.printOperator && setting.align == 2 /* right */) {
             resultText += ` ${setting.defaultConfig.textAsImage ? " " : " "}`;
           }
-          printer?.printLine(resultText);
+          printer?.printLine(resultText, { font: { fontStyle: 1 /* bold */ } });
           printer?.printSeparator("=");
           printer?.lineFeed(1);
           if (printer?.option.sharePrinter) {
@@ -2889,4 +2892,4 @@ function App() {
 
 // src/index.ts
 window.matht = CalcParser;
-G(_(App, null), document.getElementById("app"));
+E(_(App, null), document.getElementById("app"));
