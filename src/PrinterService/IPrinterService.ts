@@ -27,13 +27,11 @@ export interface IDevice {
     id: string;
     name?: string;
 }
-export interface IColumnOption {
+export type ColumnOption = {
     width?: number;
-    align?: TextAlign;
-    fontSize?: number;
-}
+} & DeepPartial<TextStyle>;
 export interface IGridOption {
-    columns: IColumnOption[];
+    columns: ColumnOption[];
     gap?: [number, number];
 }
 export type PrintImageData = {

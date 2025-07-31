@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterService';
-import { IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
+import { FontMode, IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
 import ScreenService from '../Services/ScreenService';
@@ -95,7 +95,7 @@ export function Calculator() {
         columns: [{
           width: 1
         }, {
-          align: TextAlign.right,
+          align: TextAlign.right
         }],
         gap: [0, 5]
       }, [[text, isMult ? '' : '+']]);
@@ -111,7 +111,7 @@ export function Calculator() {
           columns: [{
             width: 1
           }, {
-            align: TextAlign.right,
+            align: TextAlign.right
           }],
           gap: [0, 5]
         }, [[multSumText, '+']]);
@@ -119,7 +119,7 @@ export function Calculator() {
       else {
         printer?.printLine(multSumText);
       }
-      
+
       printer?.feed(printer.option.fontSize * 0.5);
     }
   }
@@ -172,15 +172,17 @@ export function Calculator() {
         if (setting.printOperator) {
           printer.printGrid({
             columns: [{
-              width: 1
+              width: 1,
+              font: { fontStyle: FontMode.bold }
             }, {
               align: TextAlign.right,
+              font: { fontStyle: FontMode.bold }
             }],
             gap: [0, 5]
           }, [[resultText, '∗']]);
         }
         else {
-          printer?.printLine(resultText);
+          printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
         }
         printer?.lineFeed(1);
         printer?.printSeparator("=");
@@ -239,15 +241,17 @@ export function Calculator() {
           if (setting.printOperator) {
             printer?.printGrid({
               columns: [{
-                width: 1
+                width: 1,
+                font: { fontStyle: FontMode.bold }
               }, {
                 align: TextAlign.right,
+                font: { fontStyle: FontMode.bold }
               }],
               gap: [0, 5]
             }, [[resultText, '∗']]);
           }
           else {
-            printer?.printLine(resultText);
+            printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
           }
           printer?.printSeparator("=");
           printer?.lineFeed(1);

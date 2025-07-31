@@ -8297,12 +8297,29 @@ class PrinterServiceBase {
       ``
     ];
     const styles = option.columns.map((o3) => {
-      const align = o3.align ?? this.currentStyle.align;
-      const alignStyle = align == 1 /* center */ ? "center" : align == 2 /* right */ ? "right" : "left";
-      return `font-size:${o3.fontSize ?? this.currentStyle.font.size}px;text-align:${alignStyle}`;
+      const textStyle = copy(o3, this.currentStyle);
+      const alignStyle = textStyle.align == 1 /* center */ ? "center" : textStyle.align == 2 /* right */ ? "right" : "left";
+      const styles2 = [
+        `text-align:${alignStyle}`,
+        `line-height:${textStyle.lineHeight}`,
+        `font-size:${textStyle.font.size}px`
+      ];
+      if (textStyle.font.fontStyle & 1 /* bold */) {
+        styles2.push(`font-weight:bold`);
+      }
+      if (textStyle.font.fontStyle & 2 /* italic */) {
+        styles2.push(`font-style:italic`);
+      }
+      if (textStyle.font.fontStyle & 4 /* underline */) {
+        styles2.push(`text-decoration:underline`);
+      }
+      return styles2.join(";");
     });
     const p3 = Promise.resolve(data).then((data2) => `<div style='${gridStyle.join(";")}'>
-            ${data2.flatMap((row) => row.map((col, ix) => `<div style='${styles[ix]}'>${col}</div>`)).join("")}
+            ${data2.flatMap((row) => row.map((col, ix) => {
+      ix = Math.min(ix, styles.length - 1);
+      return `<div style='${styles[ix]}'>${col}</div>`;
+    })).join("")}
     </div>`);
     this.printHtml(p3);
   }
@@ -9667,14 +9684,16 @@ function Calculator() {
         if (setting.printOperator) {
           printer.printGrid({
             columns: [{
-              width: 1
+              width: 1,
+              font: { fontStyle: 1 /* bold */ }
             }, {
-              align: 2 /* right */
+              align: 2 /* right */,
+              font: { fontStyle: 1 /* bold */ }
             }],
             gap: [0, 5]
           }, [[resultText, "∗"]]);
         } else {
-          printer?.printLine(resultText);
+          printer?.printLine(resultText, { font: { fontStyle: 1 /* bold */ } });
         }
         printer?.lineFeed(1);
         printer?.printSeparator("=");
@@ -9733,14 +9752,16 @@ function Calculator() {
           if (setting.printOperator) {
             printer?.printGrid({
               columns: [{
-                width: 1
+                width: 1,
+                font: { fontStyle: 1 /* bold */ }
               }, {
-                align: 2 /* right */
+                align: 2 /* right */,
+                font: { fontStyle: 1 /* bold */ }
               }],
               gap: [0, 5]
             }, [[resultText, "∗"]]);
           } else {
-            printer?.printLine(resultText);
+            printer?.printLine(resultText, { font: { fontStyle: 1 /* bold */ } });
           }
           printer?.printSeparator("=");
           printer?.lineFeed(1);

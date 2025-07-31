@@ -313,12 +313,31 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
             ``
         ];
         const styles = option.columns.map(o => {
-            const align = o.align ?? this.currentStyle.align;
-            const alignStyle = align == TextAlign.center ? 'center' : align == TextAlign.right ? 'right' : 'left';
-            return `font-size:${(o.fontSize ?? this.currentStyle.font.size)}px;text-align:${(alignStyle)}`;
+            const textStyle = copy(o, this.currentStyle);
+            const alignStyle = textStyle.align == TextAlign.center ? 'center' : textStyle.align == TextAlign.right ? 'right' : 'left';
+            const styles = [
+                `text-align:${(alignStyle)}`,
+                `line-height:${textStyle.lineHeight}`,
+                `font-size:${textStyle.font.size}px`,
+            ];
+
+            if (textStyle.font.fontStyle & FontMode.bold) {
+                styles.push(`font-weight:bold`);
+            }
+            if (textStyle.font.fontStyle & FontMode.italic) {
+                styles.push(`font-style:italic`);
+            }
+            if (textStyle.font.fontStyle & FontMode.underline) {
+                styles.push(`text-decoration:underline`);
+            }
+
+            return styles.join(";");
         });
         const p = Promise.resolve(data).then<string>((data) => `<div style='${gridStyle.join(';')}'>
-            ${data.flatMap(row => row.map((col, ix) => `<div style='${styles[ix]}'>${col}</div>`)).join('')}
+            ${data.flatMap(row => row.map((col, ix) => {
+                ix = Math.min(ix, styles.length - 1);
+                return `<div style='${styles[ix]}'>${col}</div>`;
+            })).join('')}
     </div>`);
         this.printHtml(p);
     }
