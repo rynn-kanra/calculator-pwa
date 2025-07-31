@@ -163,13 +163,6 @@ export function Calculator() {
         }
 
         let result = 0;
-        if (exps.length > 1 && setting.deviceName) {
-          printer?.printLine(setting.deviceName, {
-            align: TextAlign.center
-          });
-          printer?.feed(printer.option.fontSize * 0.5);
-        }
-
         for (const exp of exps) {
           print(exp);
           result += exp[1];
@@ -241,7 +234,7 @@ export function Calculator() {
 
         if (ncheckIndex >= exps.length && exps.length > 0) {
           temp = tempDisplay = input = "";
-          // printer?.printSeparator("-");
+          printer?.printSeparator("-");
           let resultText = formatNumber(resultNumb);
           if (setting.printOperator) {
             printer?.printGrid({

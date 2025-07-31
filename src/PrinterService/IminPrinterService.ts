@@ -1,5 +1,5 @@
-import { ImagePrinterService } from "./ImagePrinterService";
-import { FontMode, FontStyle, TextAlign, TextStyle } from "./IPrinterService";
+import { PrinterServiceBase } from "./PrinterServiceBase";
+import { FontMode, FontStyle, PrintImageData, TextAlign, TextStyle } from "./IPrinterService";
 import IminPrinter from "../lib/imin-printer.esm.browser";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { PrinterConfig } from "../Model/PrinterConfig";
@@ -26,13 +26,19 @@ type iminPrinter = {
     ws?: WebSocket;
 } | null;
 
+const resolvedPromise = Promise.resolve();
 // DOC: https://oss-sg.imin.sg/docs/en/JSPrinterSDK.html
-export class IminPrinterService extends ImagePrinterService {
+export class IminPrinterService extends PrinterServiceBase<() => void> {
     constructor(option: DeepPartial<PrinterConfig>, style?: TextStyle) {
         super(option, style);
     }
 
     private _instance: iminPrinter | null = null;
+    public execute(command: () => void): Promise<void> {
+        command();
+        return resolvedPromise;
+    }
+
     public async init(): Promise<void> {
         if (!this._instance) {
             this._instance = new IminPrinter();
@@ -93,24 +99,26 @@ export class IminPrinterService extends ImagePrinterService {
         this._instance?.initPrinter();
     }
     public async dispose(): Promise<void> {
-        this._instance = null;    
+        this._instance = null;
     }
     public textAlign(align: TextAlign): void {
-        this._instance?.setAlignment(align);
+        this.enqueue(() => this._instance?.setAlignment(align));
     }
     public cut(): void {
-        this._instance?.partialCut();
+        this.enqueue(() => this._instance?.partialCut());
     }
     public lineFeed(n: number = 1): void {
-        for (let i = 0; i < n; i++) {
-            this._instance?.printAndLineFeed();
-        }
+        this.enqueue(() => {
+            for (let i = 0; i < n; i++) {
+                this._instance?.printAndLineFeed();
+            }
+        });
     }
     public feed(pt: number = 24): void {
-        this._instance?.printAndFeedPaper(pt);
+        this.enqueue(() => this._instance?.printAndFeedPaper(pt));
     }
     public fontFace(faceId: number = 0): void {
-        this._instance?.setTextTypeface(faceId);
+        this.enqueue(() => this._instance?.setTextTypeface(faceId));
     }
     protected fontStyle(style: FontStyle): void {
         if (typeof style.fontFaceType == "number") {
@@ -125,21 +133,19 @@ export class IminPrinterService extends ImagePrinterService {
         }
 
         if (style.fontStyle & (FontMode.bold & FontMode.italic)) {
-            this._instance?.setTextStyle(3);
+            this.enqueue(() => this._instance?.setTextStyle(3));
+        }
+        else if (style.fontStyle & FontMode.italic) {
+            this.enqueue(() => this._instance?.setTextStyle(2));
+        }
+        else if (style.fontStyle & FontMode.bold) {
+            this.enqueue(() => this._instance?.setTextStyle(1));
         }
         else {
-            if (style.fontStyle & FontMode.italic) {
-                this._instance?.setTextStyle(2);
-            }
-            if (style.fontStyle & FontMode.bold) {
-                this._instance?.setTextStyle(1);
-            }
-            else {
-                this._instance?.setTextStyle(0);
-            }
+            this.enqueue(() => this._instance?.setTextStyle(0));
         }
     }
-    public print(text: string, fontStyle?: FontStyle): void {
+    public print(text: string | PromiseLike<string>, fontStyle?: FontStyle): void {
         if (this.option.textAsImage) {
             return super.print(text, fontStyle);
         }
@@ -147,12 +153,15 @@ export class IminPrinterService extends ImagePrinterService {
         if (fontStyle) {
             this.fontStyle(fontStyle);
         }
-        this._instance?.printText(text);
+
+        const p = Promise.resolve(text).then(text => (() => this._instance?.printText(text)))
+        this.enqueue(p);
+
         if (fontStyle) {
             this.reset();
         }
     }
-    public printLine(text: string, textStyle?: TextStyle): void {
+    public printLine(text: string | PromiseLike<string>, textStyle?: TextStyle): void {
         if (this.option.textAsImage) {
             return super.printLine(text, textStyle);
         }
@@ -166,17 +175,21 @@ export class IminPrinterService extends ImagePrinterService {
             }
         }
 
-        this._instance?.printText(text);
+        const p = Promise.resolve(text).then(text => (() => this._instance?.printText(text)))
+        this.enqueue(p);
 
         if (textStyle) {
             this.reset();
         }
     }
-    public printImage(data: ArrayBufferLike, width: number, height: number) {
-        const binary = new Uint8Array(data).reduce((c, byte) => c + String.fromCharCode(byte), '');
-        const base64 = btoa(binary);
-        const dataUri = `data:image/png;base64,${base64}`;
-        this._instance?.printSingleBitmap(dataUri);
+    public printImage(image: PrintImageData | PromiseLike<PrintImageData>) {
+        const p = Promise.resolve(image).then(image => {
+            const binary = new Uint8Array(image.data).reduce((c, byte) => c + String.fromCharCode(byte), '');
+            const base64 = btoa(binary);
+            const dataUri = `data:image/png;base64,${base64}`;
+            return () => this._instance?.printSingleBitmap(dataUri);
+        });
+        this.enqueue(p);
     }
     public openCashdrawer(): void {
         this._instance?.openCashBox();

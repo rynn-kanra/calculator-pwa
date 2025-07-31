@@ -49,7 +49,7 @@ export class BluetoothPrinterService extends ESCPrinterService {
     }
     declare public device?: BluetoothDevice | undefined;
     declare public option: PrinterConfig;
-    public async executeRaw(command: Uint8Array): Promise<void> {
+    public async execute(command: Uint8Array): Promise<void> {
         const delay = 0;
         const chunkSize = this.option.mtu; // 20-512, (232) - 20 for safe value but slower
         if (command.length <= chunkSize) {

@@ -1,8 +1,7 @@
 import { PrinterConfig } from "../Model/PrinterConfig";
 import { DeepPartial } from "../Utility/DeepPartial";
-import { delay, retry } from "../Utility/retry";
-import { ImagePrinterService } from "./ImagePrinterService";
-import { FontMode, FontStyle, TextAlign, TextStyle } from "./IPrinterService";
+import { PrinterServiceBase } from "./PrinterServiceBase";
+import { FontMode, FontStyle, PrintImageData, TextAlign, TextStyle } from "./IPrinterService";
 
 const ESC = '\x1B';
 const GS = '\x1D';
@@ -10,86 +9,13 @@ const GS = '\x1D';
 const encoder = new TextEncoder();
 
 // DOC: https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/commands.html
-export abstract class ESCPrinterService extends ImagePrinterService {
+export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
         super(option, style);
     }
 
-    private _queue: Uint8Array[] = [];
-    private _isRunning = false;
-
-    public abstract executeRaw(command: Uint8Array): Promise<void>;
-
-    public execute(command: string, isTop: boolean = false): void {
-        this.enqueue(encoder.encode(command), isTop);
-    }
-    protected enqueue(command: Uint8Array, isTop: boolean = false) {
-        if (isTop) {
-            this._queue.unshift(command);
-        }
-        else {
-            this._queue.push(command);
-        }
-        this.runQueue();
-    }
-    protected async runQueue() {
-        if (this._isRunning) {
-            return;
-        }
-
-        this._isRunning = true;
-        if (this.option.sharePrinter) {
-            try {
-                const delays = [500, 500, 1000, 1000 * 2, 1000 * 5, 1000 * 10, 1000 * 30, 1000 * 60];
-                await retry(async () => {
-                    if (this._queue.length <= 0) {
-                        return;
-                    }
-
-                    // ensure device connected.
-                    await this.connect();
-                    while (this._queue.length > 0) {
-                        const c = this._queue[0];
-                        if (c.length === 0) {
-                            await this.disconnect();
-                            this._queue.shift();
-                            return true;
-                        }
-                        else {
-                            await this.executeRaw(c);
-                            this._queue.shift();
-                        }
-                    }
-                }, delays);
-            }
-            catch { }
-        }
-        else {
-            try {
-                // ensure device connected.
-                await this.connect();
-                while (this._queue.length > 0) {
-                    const c = this._queue[0];
-                    if (c.length === 0) {
-                        continue;
-                    }
-                    else {
-                        await this.executeRaw(c);
-                        this._queue.shift();
-                    }
-                }
-            }
-            catch { }
-        }
-
-        this._isRunning = false;
-    }
-    public pause(): void {
-        this.enqueue(new Uint8Array());
-    }
-    public override async dispose(): Promise<void> {
-        this._queue.length = 0;
-        await this.disconnect();
+    public addCommand(command: string | PromiseLike<string>, isTop: boolean = false): void {
+        this.enqueue(Promise.resolve(command).then(command => encoder.encode(command)), isTop);
     }
     public reset(): void {
         super.reset();
@@ -98,15 +24,16 @@ export abstract class ESCPrinterService extends ImagePrinterService {
         this.lineHeight(this.currentStyle.lineHeight!);
         this.fontStyle(this.currentStyle.font!);
     }
+
     protected resetPrinter(): void {
-        this.execute(`${ESC}@`, true);
+        this.addCommand(`${ESC}@`, true);
     }
     public textAlign(align: TextAlign): void {
-        this.execute(`${ESC}a` + String.fromCharCode(align));
+        this.addCommand(`${ESC}a` + String.fromCharCode(align));
         this.currentStyle.align = align;
     }
     public bold(isActive: boolean = true): void {
-        this.execute(`${ESC}E` + String.fromCharCode(isActive ? 1 : 0));
+        this.addCommand(`${ESC}E` + String.fromCharCode(isActive ? 1 : 0));
         const mode = FontMode.bold;
         if (isActive) {
             this.currentStyle.font!.fontStyle! |= mode;
@@ -116,7 +43,7 @@ export abstract class ESCPrinterService extends ImagePrinterService {
         }
     }
     public underline(isActive: boolean = true): void {
-        this.execute(`${ESC}-` + String.fromCharCode(isActive ? 1 : 0));
+        this.addCommand(`${ESC}-` + String.fromCharCode(isActive ? 1 : 0));
         const mode = FontMode.underline;
         if (isActive) {
             this.currentStyle.font!.fontStyle! |= mode;
@@ -126,7 +53,7 @@ export abstract class ESCPrinterService extends ImagePrinterService {
         }
     }
     public italic(isActive: boolean = true): void {
-        this.execute(`${ESC}4` + String.fromCharCode(isActive ? 1 : 0));
+        this.addCommand(`${ESC}4` + String.fromCharCode(isActive ? 1 : 0));
         const mode = FontMode.italic;
         if (isActive) {
             this.currentStyle.font!.fontStyle! |= mode;
@@ -136,21 +63,21 @@ export abstract class ESCPrinterService extends ImagePrinterService {
         }
     }
     public cut(isFull: boolean = true): void {
-        this.execute(`${GS}V` + String.fromCharCode(isFull ? 1 : 0));
+        this.addCommand(`${GS}V` + String.fromCharCode(isFull ? 1 : 0));
     }
     public lineFeed(n: number = 1): void {
-        this.execute(`${ESC}d` + String.fromCharCode(n));
+        this.addCommand(`${ESC}d` + String.fromCharCode(n));
     }
     public feed(pt: number = 24): void {
         if (this.option.textAsImage) {
             super.feed(pt);
             return;
         }
-        // this.lineFeed(1);
-        this.execute(`${ESC}j` + String.fromCharCode(pt));
+        
+        this.addCommand(`${ESC}j` + String.fromCharCode(pt));
     }
     public fontFace(faceId: number = 0): void {
-        this.execute(`${ESC}!` + String.fromCharCode(faceId));
+        this.addCommand(`${ESC}!` + String.fromCharCode(faceId));
         this.currentStyle.font!.fontFaceType = faceId;
     }
     public fontSize(size: number = 0): void {
@@ -168,12 +95,12 @@ export abstract class ESCPrinterService extends ImagePrinterService {
             t = 7;
         }
         const sizeC = t * (16 + 1) + m;
-        this.execute(`${GS}!${String.fromCharCode(sizeC)}`);
+        this.addCommand(`${GS}!${String.fromCharCode(sizeC)}`);
         this.currentStyle.font!.size = size;
     }
     public lineHeight(size: number): void {
         const ln = Math.ceil(this.currentStyle.font?.size! * size);
-        this.execute(`${ESC}3${String.fromCharCode(ln)}`);
+        this.addCommand(`${ESC}3${String.fromCharCode(ln)}`);
         this.currentStyle.lineHeight = size;
     }
     protected fontStyle(style: DeepPartial<FontStyle>): void {
@@ -192,7 +119,7 @@ export abstract class ESCPrinterService extends ImagePrinterService {
         this.italic(Boolean(style.fontStyle & FontMode.italic));
         this.underline(Boolean(style.fontStyle & FontMode.underline));
     }
-    public print(text: string, fontStyle?: DeepPartial<FontStyle>): void {
+    public override print(text: string | PromiseLike<string>, fontStyle?: DeepPartial<FontStyle>): void {
         if (this.option.textAsImage) {
             return super.print(text, fontStyle);
         }
@@ -200,12 +127,12 @@ export abstract class ESCPrinterService extends ImagePrinterService {
         if (fontStyle) {
             this.fontStyle(fontStyle);
         }
-        this.execute(text);
+        this.addCommand(text);
         if (fontStyle) {
             this.reset();
         }
     }
-    public printLine(text: string, textStyle?: DeepPartial<TextStyle>): void {
+    public printLine(text: string | PromiseLike<string>, textStyle?: DeepPartial<TextStyle>): void {
         if (this.option.textAsImage) {
             return super.printLine(text, textStyle);
         }
@@ -219,7 +146,7 @@ export abstract class ESCPrinterService extends ImagePrinterService {
             }
         }
 
-        this.execute(`${text}\n`);
+        this.addCommand(`${text}\n`);
 
         if (textStyle) {
             this.reset();
@@ -237,21 +164,24 @@ export abstract class ESCPrinterService extends ImagePrinterService {
 
         this.printLine(separator.padStart(count, separator));
     }
-    public printImage(data: ArrayBufferLike, width: number, height: number): void {
-        const imageData = this.option.image === "bit"
-            ? this.bitImage(new Uint8ClampedArray(data), width, height)
-            : this.rastarImage(new Uint8ClampedArray(data), width, height);
-        this.enqueue(imageData);
+    public printImage(data: PrintImageData | Promise<PrintImageData>): void {
+        if (!(data instanceof Promise)) {
+            data = Promise.resolve(data);
+        }
+
+        this.enqueue(data.then(o => this.option.image === "bit"
+            ? this.bitImage(new Uint8ClampedArray(o.data), o.width, o.height)
+            : this.rastarImage(new Uint8ClampedArray(o.data), o.width, o.height)));
     }
     public openCashdrawer(): void {
         const pin: 0 | 1 | 48 | 49 = 48, on: number = 25, off: number = 200;
-        this.execute(`${ESC}p${String.fromCharCode(pin)}${String.fromCharCode(on)}${String.fromCharCode(off)}`);
+        this.addCommand(`${ESC}p${String.fromCharCode(pin)}${String.fromCharCode(on)}${String.fromCharCode(off)}`);
     }
     public printQR(): void {
-        this.execute(``);
+        this.addCommand(``);
     }
     public printBarcode(): void {
-        this.execute(``);
+        this.addCommand(``);
     }
 
     protected rastarImage(pixels: Uint8ClampedArray, width: number, height: number): Uint8Array {

@@ -36,6 +36,11 @@ export interface IGridOption {
     columns: IColumnOption[];
     gap?: [number, number];
 }
+export type PrintImageData = {
+    data: ArrayBufferLike;
+    width: number;
+    height: number;
+}
 
 export interface IPrinterService {
     option: PrinterConfig;
@@ -52,13 +57,13 @@ export interface IPrinterService {
     cut(isFull?: boolean): void;
     lineFeed(n?: number): void;
     feed(pt?: number): void;
-    print(text: string, style?: DeepPartial<FontStyle>): void;
+    print(text: string | PromiseLike<string>, style?: DeepPartial<FontStyle>): void;
     printSeparator(separator: string): void;
-    printLine(text: string, style?: DeepPartial<TextStyle>): void;
-    printImage(data: ArrayBufferLike, width: number, height: number): void;
-    printHtml(html: string): void;
-    printGrid(option: IGridOption, data: string[][]): void;
+    printLine(text: string | PromiseLike<string>, style?: DeepPartial<TextStyle>): void;
+    printImage(image: PrintImageData | PromiseLike<PrintImageData>): void;
+    printHtml(html: string | PromiseLike<string>): void;
+    printGrid(option: IGridOption, data: string[][] | PromiseLike<string[][]>): void;
     openCashdrawer(): void;
-    printQR(data: string): void;
-    printBarcode(data: string): void;
+    printQR(data: string | PromiseLike<string>): void;
+    printBarcode(data: string | PromiseLike<string>): void;
 }

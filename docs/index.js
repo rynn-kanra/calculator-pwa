@@ -7947,33 +7947,7 @@ function D2(n2, t3) {
   return typeof t3 == "function" ? t3(n2) : t3;
 }
 
-// src/Utility/retry.ts
-function delay(delay2) {
-  return new Promise((resolve) => setTimeout(resolve, delay2));
-}
-async function retry(fn, delays) {
-  if (!Array.isArray(delays)) {
-    delays = [1000];
-  }
-  let count = 0;
-  while (true) {
-    try {
-      const resetRetry = await fn();
-      if (resetRetry) {
-        count = 0;
-        throw new Error("force retry");
-      }
-      break;
-    } catch (err) {
-      await delay(delays[count]);
-      if (count < delays.length - 1) {
-        count++;
-      }
-    }
-  }
-}
-
-// src/PrinterService/ImagePrinterService.ts
+// src/PrinterService/PrinterServiceBase.ts
 var import_html2canvas = __toESM(require_html2canvas(), 1);
 
 // src/Model/PrinterConfig.ts
@@ -8054,8 +8028,34 @@ function copy(target, source, isSet = false) {
   return target;
 }
 
-// src/PrinterService/ImagePrinterService.ts
-class ImagePrinterService {
+// src/Utility/retry.ts
+function delay(delay2) {
+  return new Promise((resolve) => setTimeout(resolve, delay2));
+}
+async function retry(fn, delays) {
+  if (!Array.isArray(delays)) {
+    delays = [1000];
+  }
+  let count = 0;
+  while (true) {
+    try {
+      const resetRetry = await fn();
+      if (resetRetry) {
+        count = 0;
+        throw new Error("force retry");
+      }
+      break;
+    } catch (err) {
+      await delay(delays[count]);
+      if (count < delays.length - 1) {
+        count++;
+      }
+    }
+  }
+}
+
+// src/PrinterService/PrinterServiceBase.ts
+class PrinterServiceBase {
   constructor(option, style) {
     if (!option) {
       option = {};
@@ -8076,56 +8076,109 @@ class ImagePrinterService {
     this.currentStyle = copy({}, this.defaultStyle);
   }
   device;
+  async dispose() {
+    this._queue.length = 0;
+    await this.disconnect();
+  }
   currentStyle;
   defaultStyle;
   _canvas = null;
   _htmlContainer = null;
   option;
+  _queue = [];
+  _isRunning = false;
+  enqueue(command, isTop = false) {
+    if (isTop) {
+      this._queue.unshift(Promise.resolve(command));
+    } else {
+      this._queue.push(Promise.resolve(command));
+    }
+    this.runQueue();
+  }
+  async runQueue() {
+    if (this._isRunning) {
+      return;
+    }
+    this._isRunning = true;
+    try {
+      const delays = [500, 500, 1000, 1000 * 2, 1000 * 5, 1000 * 10, 1000 * 30, 1000 * 60];
+      await retry(async () => {
+        if (this._queue.length <= 0) {
+          return;
+        }
+        await this.connect();
+        while (this._queue.length > 0) {
+          const c3 = await this._queue[0];
+          if (c3 === null) {
+            if (this.option.sharePrinter) {
+              await this.disconnect();
+            }
+            this._queue.shift();
+            return true;
+          } else {
+            await this.execute(c3);
+            this._queue.shift();
+          }
+        }
+      }, delays);
+    } catch {}
+    this._isRunning = false;
+  }
+  pause() {
+    this.enqueue(Promise.resolve(null));
+  }
   print(text, fontStyle) {
     const textStyle = fontStyle ? copy({ font: fontStyle }, this.currentStyle) : undefined;
     this.printLine(text, textStyle);
   }
   printLine(text, textStyl) {
     const textStyle = copy(textStyl, this.currentStyle);
-    const imageData = this.drawCanvas((cv, ctx2) => {
-      const lines = [];
-      let line = "";
-      let textHeight = textStyle.font.size;
-      for (let i3 = 0;i3 < text.length; i3++) {
-        const testLine = line + text[i3];
-        const metrics = ctx2.measureText(testLine);
-        if (metrics.width > cv.width && line !== "") {
+    const p3 = Promise.resolve(text).then((text2) => {
+      const imageData = this.drawCanvas((cv, ctx2) => {
+        const lines = [];
+        let line = "";
+        let textHeight = textStyle.font.size;
+        for (let i3 = 0;i3 < text2.length; i3++) {
+          const testLine = line + text2[i3];
+          const metrics = ctx2.measureText(testLine);
+          if (metrics.width > cv.width && line !== "") {
+            lines.push(line);
+            line = text2[i3];
+          } else {
+            line = testLine;
+          }
+        }
+        if (line) {
           lines.push(line);
-          line = text[i3];
-        } else {
-          line = testLine;
         }
-      }
-      if (line) {
-        lines.push(line);
-      }
-      const lineHeight = Math.ceil(textHeight * textStyle.lineHeight);
-      const height = lines.length * lineHeight;
-      const x2 = textStyle.align === 2 /* right */ ? cv.width : textStyle.align == 1 /* center */ ? cv.width / 2 : 0;
-      for (let i3 = 0;i3 < lines.length; i3++) {
-        const y3 = i3 * lineHeight + Math.ceil((lineHeight - textHeight) / 2);
-        const text2 = lines[i3];
-        ctx2.fillText(text2, x2, y3);
-        if (textStyle.font.fontStyle & 4 /* underline */) {
-          const textWidth = ctx2.measureText(text2).width;
-          const y22 = y3 + lineHeight - Math.ceil((lineHeight - textHeight) / 2);
-          ctx2.beginPath();
-          const lx = textStyle.align === 2 /* right */ ? x2 - textWidth : textStyle.align == 1 /* center */ ? x2 - textWidth / 2 : 0;
-          ctx2.moveTo(lx, y22);
-          ctx2.lineTo(lx + textWidth, y22);
-          ctx2.lineWidth = 1;
-          ctx2.strokeStyle = ctx2.fillStyle;
-          ctx2.stroke();
+        const lineHeight = Math.ceil(textHeight * textStyle.lineHeight);
+        const height = lines.length * lineHeight;
+        const x2 = textStyle.align === 2 /* right */ ? cv.width : textStyle.align == 1 /* center */ ? cv.width / 2 : 0;
+        for (let i3 = 0;i3 < lines.length; i3++) {
+          const y3 = i3 * lineHeight + Math.ceil((lineHeight - textHeight) / 2);
+          const text3 = lines[i3];
+          ctx2.fillText(text3, x2, y3);
+          if (textStyle.font.fontStyle & 4 /* underline */) {
+            const textWidth = ctx2.measureText(text3).width;
+            const y22 = y3 + lineHeight - Math.ceil((lineHeight - textHeight) / 2);
+            ctx2.beginPath();
+            const lx = textStyle.align === 2 /* right */ ? x2 - textWidth : textStyle.align == 1 /* center */ ? x2 - textWidth / 2 : 0;
+            ctx2.moveTo(lx, y22);
+            ctx2.lineTo(lx + textWidth, y22);
+            ctx2.lineWidth = 1;
+            ctx2.strokeStyle = ctx2.fillStyle;
+            ctx2.stroke();
+          }
         }
-      }
-      return height;
-    }, textStyle);
-    this.printImage(imageData.data.buffer, imageData.width, imageData.height);
+        return height;
+      }, textStyle);
+      return {
+        data: imageData.data.buffer,
+        width: imageData.width,
+        height: imageData.height
+      };
+    });
+    this.printImage(p3);
   }
   printSeparator(separator) {
     const textStyle = this.currentStyle;
@@ -8140,7 +8193,11 @@ class ImagePrinterService {
       ctx2.fillText(text, x2, y3);
       return lineHeight;
     });
-    this.printImage(imageData.data.buffer, imageData.width, imageData.height);
+    this.printImage({
+      data: imageData.data.buffer,
+      height: imageData.height,
+      width: imageData.width
+    });
   }
   reset() {
     this.currentStyle = copy({}, this.defaultStyle);
@@ -8153,7 +8210,11 @@ class ImagePrinterService {
       ctx2.fillRect(0, 0, cv.width, lineHeight);
       return lineHeight;
     });
-    this.printImage(imageData.data.buffer, imageData.width, imageData.height);
+    this.printImage({
+      data: imageData.data.buffer,
+      height: imageData.height,
+      width: imageData.width
+    });
   }
   drawCanvas(draw, textStyle) {
     let canvas = this._canvas;
@@ -8178,7 +8239,6 @@ class ImagePrinterService {
     if (textStyle.font.fontStyle & 1 /* bold */) {
       ctx2.font += " bold";
     }
-    ctx2.textBaseline = "top";
     switch (textStyle.align) {
       case 2 /* right */: {
         ctx2.textAlign = "right";
@@ -8205,23 +8265,27 @@ class ImagePrinterService {
       const div = document.createElement("div");
       div.style.position = "absolute";
       div.style.left = "-9999px";
+      div.style.textOrientation = "";
       div.style.width = `${this.option.width}px`;
       document.body.appendChild(div);
       this._htmlContainer = div;
-      div.style.left = "0";
-      div.style.top = "0";
-      div.style.zIndex = "999";
     }
-    this._htmlContainer.innerHTML = html;
-    import_html2canvas.default(this._htmlContainer, {
-      scale: 1,
-      useCORS: true,
-      backgroundColor: null
-    }).then((canvas) => {
+    const p3 = Promise.resolve(html).then(async (html2) => {
+      this._htmlContainer.innerHTML = html2;
+      const canvas = await import_html2canvas.default(this._htmlContainer, {
+        scale: 1,
+        useCORS: true,
+        backgroundColor: null
+      });
       const ctx2 = canvas.getContext("2d");
       const imageData = ctx2.getImageData(0, 0, canvas.width, canvas.height);
-      this.printImage(imageData.data.buffer, imageData.width, imageData.height);
+      return {
+        data: imageData.data.buffer,
+        height: imageData.height,
+        width: imageData.width
+      };
     });
+    this.printImage(p3);
   }
   printGrid(option, data) {
     const gridStyle = [
@@ -8229,17 +8293,18 @@ class ImagePrinterService {
       `grid-template-columns: ${option.columns.map((o3) => o3.width ? `${o3.width}fr` : "auto").join(" ")}`,
       `gap: ${option.gap?.[0] ?? 0}px ${option.gap?.[1] ?? 0}px`,
       `line-height: ${this.currentStyle.lineHeight}`,
-      `font-family: sans-serif`
+      `font-family: sans-serif`,
+      ``
     ];
     const styles = option.columns.map((o3) => {
       const align = o3.align ?? this.currentStyle.align;
       const alignStyle = align == 1 /* center */ ? "center" : align == 2 /* right */ ? "right" : "left";
       return `font-size:${o3.fontSize ?? this.currentStyle.font.size}px;text-align:${alignStyle}`;
     });
-    const html = `<div style='${gridStyle.join(";")}'>
-        ${data.flatMap((row) => row.map((col, ix) => `<div style='${styles[ix]}'>${col}</div>`)).join("")}
-</div>`;
-    this.printHtml(html);
+    const p3 = Promise.resolve(data).then((data2) => `<div style='${gridStyle.join(";")}'>
+            ${data2.flatMap((row) => row.map((col, ix) => `<div style='${styles[ix]}'>${col}</div>`)).join("")}
+    </div>`);
+    this.printHtml(p3);
   }
   setDefaultStyle(style) {
     this.defaultStyle = style;
@@ -8252,71 +8317,12 @@ var ESC = "\x1B";
 var GS = "\x1D";
 var encoder = new TextEncoder;
 
-class ESCPrinterService extends ImagePrinterService {
+class ESCPrinterService extends PrinterServiceBase {
   constructor(option, style) {
     super(option, style);
   }
-  _queue = [];
-  _isRunning = false;
-  execute(command, isTop = false) {
-    this.enqueue(encoder.encode(command), isTop);
-  }
-  enqueue(command, isTop = false) {
-    if (isTop) {
-      this._queue.unshift(command);
-    } else {
-      this._queue.push(command);
-    }
-    this.runQueue();
-  }
-  async runQueue() {
-    if (this._isRunning) {
-      return;
-    }
-    this._isRunning = true;
-    if (this.option.sharePrinter) {
-      try {
-        const delays = [500, 500, 1000, 1000 * 2, 1000 * 5, 1000 * 10, 1000 * 30, 1000 * 60];
-        await retry(async () => {
-          if (this._queue.length <= 0) {
-            return;
-          }
-          await this.connect();
-          while (this._queue.length > 0) {
-            const c3 = this._queue[0];
-            if (c3.length === 0) {
-              await this.disconnect();
-              this._queue.shift();
-              return true;
-            } else {
-              await this.executeRaw(c3);
-              this._queue.shift();
-            }
-          }
-        }, delays);
-      } catch {}
-    } else {
-      try {
-        await this.connect();
-        while (this._queue.length > 0) {
-          const c3 = this._queue[0];
-          if (c3.length === 0) {
-            continue;
-          } else {
-            await this.executeRaw(c3);
-            this._queue.shift();
-          }
-        }
-      } catch {}
-    }
-    this._isRunning = false;
-  }
-  pause() {
-    this.enqueue(new Uint8Array);
-  }
-  async dispose() {
-    this._queue.length = 0;
-    await this.disconnect();
+  addCommand(command, isTop = false) {
+    this.enqueue(Promise.resolve(command).then((command2) => encoder.encode(command2)), isTop);
   }
   reset() {
     super.reset();
@@ -8326,14 +8332,14 @@ class ESCPrinterService extends ImagePrinterService {
     this.fontStyle(this.currentStyle.font);
   }
   resetPrinter() {
-    this.execute(`${ESC}@`, true);
+    this.addCommand(`${ESC}@`, true);
   }
   textAlign(align) {
-    this.execute(`${ESC}a` + String.fromCharCode(align));
+    this.addCommand(`${ESC}a` + String.fromCharCode(align));
     this.currentStyle.align = align;
   }
   bold(isActive = true) {
-    this.execute(`${ESC}E` + String.fromCharCode(isActive ? 1 : 0));
+    this.addCommand(`${ESC}E` + String.fromCharCode(isActive ? 1 : 0));
     const mode = 1 /* bold */;
     if (isActive) {
       this.currentStyle.font.fontStyle |= mode;
@@ -8342,7 +8348,7 @@ class ESCPrinterService extends ImagePrinterService {
     }
   }
   underline(isActive = true) {
-    this.execute(`${ESC}-` + String.fromCharCode(isActive ? 1 : 0));
+    this.addCommand(`${ESC}-` + String.fromCharCode(isActive ? 1 : 0));
     const mode = 4 /* underline */;
     if (isActive) {
       this.currentStyle.font.fontStyle |= mode;
@@ -8351,7 +8357,7 @@ class ESCPrinterService extends ImagePrinterService {
     }
   }
   italic(isActive = true) {
-    this.execute(`${ESC}4` + String.fromCharCode(isActive ? 1 : 0));
+    this.addCommand(`${ESC}4` + String.fromCharCode(isActive ? 1 : 0));
     const mode = 2 /* italic */;
     if (isActive) {
       this.currentStyle.font.fontStyle |= mode;
@@ -8360,20 +8366,20 @@ class ESCPrinterService extends ImagePrinterService {
     }
   }
   cut(isFull = true) {
-    this.execute(`${GS}V` + String.fromCharCode(isFull ? 1 : 0));
+    this.addCommand(`${GS}V` + String.fromCharCode(isFull ? 1 : 0));
   }
   lineFeed(n2 = 1) {
-    this.execute(`${ESC}d` + String.fromCharCode(n2));
+    this.addCommand(`${ESC}d` + String.fromCharCode(n2));
   }
   feed(pt = 24) {
     if (this.option.textAsImage) {
       super.feed(pt);
       return;
     }
-    this.execute(`${ESC}j` + String.fromCharCode(pt));
+    this.addCommand(`${ESC}j` + String.fromCharCode(pt));
   }
   fontFace(faceId = 0) {
-    this.execute(`${ESC}!` + String.fromCharCode(faceId));
+    this.addCommand(`${ESC}!` + String.fromCharCode(faceId));
     this.currentStyle.font.fontFaceType = faceId;
   }
   fontSize(size = 0) {
@@ -8391,12 +8397,12 @@ class ESCPrinterService extends ImagePrinterService {
       t3 = 7;
     }
     const sizeC = t3 * (16 + 1) + m3;
-    this.execute(`${GS}!${String.fromCharCode(sizeC)}`);
+    this.addCommand(`${GS}!${String.fromCharCode(sizeC)}`);
     this.currentStyle.font.size = size;
   }
   lineHeight(size) {
     const ln = Math.ceil(this.currentStyle.font?.size * size);
-    this.execute(`${ESC}3${String.fromCharCode(ln)}`);
+    this.addCommand(`${ESC}3${String.fromCharCode(ln)}`);
     this.currentStyle.lineHeight = size;
   }
   fontStyle(style) {
@@ -8420,7 +8426,7 @@ class ESCPrinterService extends ImagePrinterService {
     if (fontStyle) {
       this.fontStyle(fontStyle);
     }
-    this.execute(text);
+    this.addCommand(text);
     if (fontStyle) {
       this.reset();
     }
@@ -8437,7 +8443,7 @@ class ESCPrinterService extends ImagePrinterService {
         this.textAlign(textStyle.align);
       }
     }
-    this.execute(`${text}
+    this.addCommand(`${text}
 `);
     if (textStyle) {
       this.reset();
@@ -8453,19 +8459,21 @@ class ESCPrinterService extends ImagePrinterService {
     }
     this.printLine(separator.padStart(count, separator));
   }
-  printImage(data, width, height) {
-    const imageData = this.option.image === "bit" ? this.bitImage(new Uint8ClampedArray(data), width, height) : this.rastarImage(new Uint8ClampedArray(data), width, height);
-    this.enqueue(imageData);
+  printImage(data) {
+    if (!(data instanceof Promise)) {
+      data = Promise.resolve(data);
+    }
+    this.enqueue(data.then((o3) => this.option.image === "bit" ? this.bitImage(new Uint8ClampedArray(o3.data), o3.width, o3.height) : this.rastarImage(new Uint8ClampedArray(o3.data), o3.width, o3.height)));
   }
   openCashdrawer() {
     const pin = 48, on = 25, off = 200;
-    this.execute(`${ESC}p${String.fromCharCode(pin)}${String.fromCharCode(on)}${String.fromCharCode(off)}`);
+    this.addCommand(`${ESC}p${String.fromCharCode(pin)}${String.fromCharCode(on)}${String.fromCharCode(off)}`);
   }
   printQR() {
-    this.execute(``);
+    this.addCommand(``);
   }
   printBarcode() {
-    this.execute(``);
+    this.addCommand(``);
   }
   rastarImage(pixels, width, height) {
     const bytesPerRow = Math.ceil(width / 8);
@@ -8569,13 +8577,13 @@ class BluetoothPrinterService extends ESCPrinterService {
     this.device?.gatt?.disconnect();
     this._connection = undefined;
   }
-  async executeRaw(command) {
-    const delay3 = 0;
+  async execute(command) {
+    const delay2 = 0;
     const chunkSize = this.option.mtu;
     if (command.length <= chunkSize) {
       await this._connection?.writeValue(command);
-      if (delay3) {
-        await new Promise((resolve) => setTimeout(resolve, delay3));
+      if (delay2) {
+        await new Promise((resolve) => setTimeout(resolve, delay2));
       }
       return;
     }
@@ -8583,8 +8591,8 @@ class BluetoothPrinterService extends ESCPrinterService {
     do {
       const chunk = command.slice(offset, offset + chunkSize);
       await this._connection?.writeValue(chunk);
-      if (delay3) {
-        await new Promise((resolve) => setTimeout(resolve, delay3));
+      if (delay2) {
+        await new Promise((resolve) => setTimeout(resolve, delay2));
       }
       offset += chunkSize;
     } while (offset < command.length);
@@ -8596,55 +8604,72 @@ class BluetoothPrinterService extends ESCPrinterService {
 }
 
 // src/PrinterService/LogPrinterService.ts
-class LogPrinterService extends ImagePrinterService {
+var resolvedPromise = Promise.resolve();
+
+class LogPrinterService extends PrinterServiceBase {
   constructor(option, style) {
     super(option, style);
   }
   _imageCanvas;
   _tempCanvas;
+  execute(command) {
+    console.log(command.message, ...command.params || []);
+    return resolvedPromise;
+  }
   init() {
     this.device = { id: "", name: "console" };
-    return Promise.resolve();
+    return resolvedPromise;
   }
   connect() {
-    return Promise.resolve();
+    return resolvedPromise;
   }
   disconnect() {
-    return Promise.resolve();
+    return resolvedPromise;
   }
   dispose() {
-    return Promise.resolve();
+    return resolvedPromise;
   }
   printLine(text, textStyle) {
     if (this.option.textAsImage) {
       return super.printLine(text, textStyle);
     }
     textStyle = copy(textStyle, this.currentStyle);
-    switch (textStyle.align) {
-      case 2 /* right */: {
-        text = text.padStart(50);
-        break;
+    const p3 = Promise.resolve(text).then((text2) => {
+      switch (textStyle?.align) {
+        case 2 /* right */: {
+          text2 = text2.padStart(50);
+          break;
+        }
+        case 1 /* center */: {
+          text2 = " ".repeat((50 - text2.length) / 2) + text2;
+          break;
+        }
       }
-      case 1 /* center */: {
-        text = " ".repeat((50 - text.length) / 2) + text;
-        break;
-      }
-    }
-    console.log(text);
+      return {
+        message: text2
+      };
+    });
+    this.enqueue(p3);
   }
   printSeparator(separator) {
     if (this.option.textAsImage) {
       return super.printSeparator(separator);
     }
-    console.log(separator.padStart(50, separator));
+    this.enqueue({
+      message: separator.padStart(50, separator)
+    });
   }
   textAlign(align) {}
   cut(isFull) {
-    console.log("cut");
+    this.enqueue({
+      message: "cut"
+    });
   }
   lineFeed(n2 = 1) {
     for (let i3 = 0, len = n2 || 1;i3 < len; i3++) {
-      console.log("");
+      this.enqueue({
+        message: ""
+      });
     }
   }
   feed(pt = 24) {
@@ -8653,32 +8678,38 @@ class LogPrinterService extends ImagePrinterService {
     }
     this.lineFeed(Math.ceil(pt / 24));
   }
-  printImage(data, width, height) {
+  printImage(image) {
     if (!this._imageCanvas) {
       this._imageCanvas = document.createElement("canvas");
     }
-    this._imageCanvas.width = width;
-    this._imageCanvas.height = height;
-    const ctx2 = this._imageCanvas.getContext("2d");
-    ctx2.fillStyle = "white";
-    ctx2.fillRect(0, 0, width, height);
     if (!this._tempCanvas) {
       this._tempCanvas = document.createElement("canvas");
     }
-    this._tempCanvas.width = width;
-    this._tempCanvas.height = height;
-    const tempCtx = this._tempCanvas.getContext("2d");
-    tempCtx.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
-    ctx2.drawImage(this._tempCanvas, 0, 0);
-    const dataUrl = this._imageCanvas.toDataURL();
-    const style = [
-      "font-size: 1px;",
-      `background: url(${dataUrl}) no-repeat;`,
-      "background-size: contain;",
-      `padding: ${height}px ${width}px;`,
-      "line-height: 0;"
-    ].join(" ");
-    console.log("%c ", style);
+    const p3 = Promise.resolve(image).then((image2) => {
+      this._imageCanvas.width = image2.width;
+      this._imageCanvas.height = image2.height;
+      const ctx2 = this._imageCanvas.getContext("2d");
+      ctx2.fillStyle = "white";
+      ctx2.fillRect(0, 0, image2.width, image2.height);
+      this._tempCanvas.width = image2.width;
+      this._tempCanvas.height = image2.height;
+      const tempCtx = this._tempCanvas.getContext("2d");
+      tempCtx.putImageData(new ImageData(new Uint8ClampedArray(image2.data), image2.width, image2.height), 0, 0);
+      ctx2.drawImage(this._tempCanvas, 0, 0);
+      const dataUrl = this._imageCanvas.toDataURL();
+      const style = [
+        "font-size: 1px;",
+        `background: url(${dataUrl}) no-repeat;`,
+        "background-size: contain;",
+        `padding: ${image2.height}px ${image2.width}px;`,
+        "line-height: 0;"
+      ].join(" ");
+      return {
+        message: "%c ",
+        params: [style]
+      };
+    });
+    this.enqueue(p3);
   }
   openCashdrawer() {}
   printQR() {}
@@ -9080,7 +9111,7 @@ function useLongPress({
   onClick,
   onHold,
   repeat = true,
-  delay: delay3 = 500,
+  delay: delay2 = 500,
   interval = 100
 }) {
   const timerRef = A2(null);
@@ -9096,7 +9127,7 @@ function useLongPress({
         if (repeat && onHold) {
           intervalRef.current = window.setInterval(onHold, interval);
         }
-      }, delay3);
+      }, delay2);
     }
   };
   const stop = () => {
@@ -9627,12 +9658,6 @@ function Calculator() {
           return;
         }
         let result2 = 0;
-        if (exps.length > 1 && setting.deviceName) {
-          printer?.printLine(setting.deviceName, {
-            align: 1 /* center */
-          });
-          printer?.feed(printer.option.fontSize * 0.5);
-        }
         for (const exp of exps) {
           print(exp);
           result2 += exp[1];
@@ -9703,6 +9728,7 @@ function Calculator() {
         setDisplay(formatNumber(resultNumb));
         if (ncheckIndex >= exps.length && exps.length > 0) {
           temp = tempDisplay = input = "";
+          printer?.printSeparator("-");
           let resultText = formatNumber(resultNumb);
           if (setting.printOperator) {
             printer?.printGrid({
