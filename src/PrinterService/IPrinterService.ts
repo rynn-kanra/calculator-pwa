@@ -27,6 +27,15 @@ export interface IDevice {
     id: string;
     name?: string;
 }
+export interface IColumnOption {
+    width?: number;
+    align?: TextAlign;
+    fontSize?: number;
+}
+export interface IGridOption {
+    columns: IColumnOption[];
+    gap?: [number, number];
+}
 
 export interface IPrinterService {
     option: PrinterConfig;
@@ -47,6 +56,8 @@ export interface IPrinterService {
     printSeparator(separator: string): void;
     printLine(text: string, style?: DeepPartial<TextStyle>): void;
     printImage(data: ArrayBufferLike, width: number, height: number): void;
+    printHtml(html: string): void;
+    printGrid(option: IGridOption, data: string[][]): void;
     openCashdrawer(): void;
     printQR(data: string): void;
     printBarcode(data: string): void;

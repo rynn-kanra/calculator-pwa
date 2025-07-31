@@ -19,7 +19,6 @@ export function SettingPopup(setting: SettingPopupProps) {
   }
 
   const [data] = useState(settingData);
-  const [isRight, setIsRight] = useState(data.align == TextAlign.right);
 
   const onClose = () => {
     SettingService.set(data);
@@ -84,24 +83,22 @@ export function SettingPopup(setting: SettingPopupProps) {
         </div>
         <div>Posisi cetakan</div>
         <div class="input-container">
-          <select class='form' value={data.align} onInput={(e) => { data.align = parseInt(e.target.value); setIsRight(data.align == TextAlign.right); }}>
+          <select class='form' value={data.align} onInput={(e) => { data.align = parseInt(e.target.value); }}>
             <option value={TextAlign.left}>Kiri</option>
             <option value={TextAlign.center}>Tengah</option>
             <option value={TextAlign.right}>Kanan</option>
           </select>
         </div>
-        {isRight && (
-          <><div>Cetak operator +</div>
-            <div class="input-container">
-              <label class="switch">
-                <input
-                  type="checkbox"
-                  checked={data.printOperator} onInput={(e) => { data.printOperator = e.target.checked; }}
-                />
-                <span class="slider"></span>
-              </label>
-            </div></>
-        )}
+        <div>Cetak operator +</div>
+        <div class="input-container">
+          <label class="switch">
+            <input
+              type="checkbox"
+              checked={data.printOperator} onInput={(e) => { data.printOperator = e.target.checked; }}
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
         <div>Tipe printer</div>
         <div>
           <select class='form' value={data.printerType} onInput={(e) => { data.printerType = e.target.value; }}>

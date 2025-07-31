@@ -90,19 +90,36 @@ export function Calculator() {
       printer?.feed(printer.option.fontSize * 0.5);
     }
 
-    if (setting.printOperator && setting.align == TextAlign.right) {
-      text += ` ${(isMult ? (setting.defaultConfig.textAsImage ? '\u2007' : ' ') : "+")}`;
+    if (setting.printOperator) {
+      printer?.printGrid({
+        columns: [{
+          width: 1
+        }, {
+          align: TextAlign.right,
+        }],
+        gap: [0, 5]
+      }, [[text, isMult ? '' : '+']]);
     }
-
-    printer?.printLine(text);
+    else {
+      printer?.printLine(text);
+    }
 
     if (isMult) {
       let multSumText = "=" + formatNumber(sum || 0);
-      if (setting.printOperator && setting.align == TextAlign.right) {
-        multSumText += ` +`;
+      if (setting.printOperator) {
+        printer?.printGrid({
+          columns: [{
+            width: 1
+          }, {
+            align: TextAlign.right,
+          }],
+          gap: [0, 5]
+        }, [[multSumText, '+']]);
       }
-
-      printer?.printLine(multSumText);
+      else {
+        printer?.printLine(multSumText);
+      }
+      
       printer?.feed(printer.option.fontSize * 0.5);
     }
   }
@@ -159,10 +176,19 @@ export function Calculator() {
         }
         printer?.printSeparator("-");
         let resultText = formatNumber(result);
-        if (setting.printOperator && setting.align == TextAlign.right) {
-          resultText += ` ${(setting.defaultConfig.textAsImage ? '\u2007' : ' ')}`;
+        if (setting.printOperator) {
+          printer.printGrid({
+            columns: [{
+              width: 1
+            }, {
+              align: TextAlign.right,
+            }],
+            gap: [0, 5]
+          }, [[resultText, '∗']]);
         }
-        printer?.printLine(resultText);
+        else {
+          printer?.printLine(resultText);
+        }
         printer?.lineFeed(1);
         printer?.printSeparator("=");
         printer?.lineFeed(1);
@@ -215,12 +241,21 @@ export function Calculator() {
 
         if (ncheckIndex >= exps.length && exps.length > 0) {
           temp = tempDisplay = input = "";
-          printer?.printSeparator("-");
+          // printer?.printSeparator("-");
           let resultText = formatNumber(resultNumb);
-          if (setting.printOperator && setting.align == TextAlign.right) {
-            resultText += ` ${(setting.defaultConfig.textAsImage ? '\u2007' : ' ')}`;
+          if (setting.printOperator) {
+            printer?.printGrid({
+              columns: [{
+                width: 1
+              }, {
+                align: TextAlign.right,
+              }],
+              gap: [0, 5]
+            }, [[resultText, '∗']]);
           }
-          printer?.printLine(resultText);
+          else {
+            printer?.printLine(resultText);
+          }
           printer?.printSeparator("=");
           printer?.lineFeed(1);
           if (printer?.option.sharePrinter) {

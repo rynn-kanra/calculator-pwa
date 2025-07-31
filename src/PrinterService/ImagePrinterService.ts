@@ -1,7 +1,8 @@
+import html2canvas from "html2canvas";
 import { PrinterConfig } from "../Model/PrinterConfig";
 import { copy } from "../Utility/copy";
 import { DeepPartial } from "../Utility/DeepPartial";
-import { FontMode, FontStyle, IDevice, IPrinterService, TextAlign, TextStyle } from "./IPrinterService";
+import { FontMode, FontStyle, IColumnOption, IDevice, IGridOption, IPrinterService, TextAlign, TextStyle } from "./IPrinterService";
 
 export abstract class ImagePrinterService implements IPrinterService {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
@@ -35,6 +36,7 @@ export abstract class ImagePrinterService implements IPrinterService {
     protected currentStyle: TextStyle;
     protected defaultStyle: TextStyle;
     private _canvas: HTMLCanvasElement | null = null;
+    private _htmlContainer: HTMLDivElement | null = null;
     public option: PrinterConfig;
 
     public print(text: string, fontStyle?: DeepPartial<FontStyle>): void {
@@ -47,11 +49,10 @@ export abstract class ImagePrinterService implements IPrinterService {
         const imageData = this.drawCanvas((cv, ctx) => {
             const lines = [];
             let line = '';
-            let textHeight: number = 0;
+            let textHeight: number = textStyle.font.size;
             for (let i = 0; i < text.length; i++) {
                 const testLine = line + text[i];
                 const metrics = ctx.measureText(testLine);
-                textHeight = Math.max(textHeight, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent);
 
                 if (metrics.width > cv.width && line !== '') {
                     lines.push(line);
@@ -64,10 +65,6 @@ export abstract class ImagePrinterService implements IPrinterService {
                 lines.push(line);
             }
 
-            if (!textHeight) {
-                textHeight = textStyle.font.size;
-            }
-
             const lineHeight = Math.ceil(textHeight * textStyle.lineHeight);
             const height = lines.length * lineHeight;
             const x = textStyle.align === TextAlign.right
@@ -77,7 +74,7 @@ export abstract class ImagePrinterService implements IPrinterService {
                     : 0;
 
             for (let i = 0; i < lines.length; i++) {
-                const y = i * lineHeight + Math.floor((lineHeight - textHeight) / 3);
+                const y = i * lineHeight + Math.ceil((lineHeight - textHeight) / 2);
                 const text = lines[i];
                 ctx.fillText(text, x, y);
                 if (textStyle.font.fontStyle & FontMode.underline) {
@@ -107,8 +104,7 @@ export abstract class ImagePrinterService implements IPrinterService {
     public printSeparator(separator: string): void {
         const textStyle = this.currentStyle;
         const imageData = this.drawCanvas((cv, ctx) => {
-            const baseMetrics = ctx.measureText("1");
-            const textHeight = baseMetrics.actualBoundingBoxAscent + baseMetrics.actualBoundingBoxDescent;
+            const textHeight = this.currentStyle.font.size;
             const lineHeight = textHeight * textStyle.lineHeight!;
 
             const metrics = ctx.measureText(separator);
@@ -136,9 +132,7 @@ export abstract class ImagePrinterService implements IPrinterService {
     public abstract lineFeed(n?: number): void;
     public feed(pt: number = 24): void {
         const imageData = this.drawCanvas((cv, ctx) => {
-            ctx.font = ctx.font.replace(`${this.currentStyle.font.size}px`, `${pt}px`);
-            const baseMetrics = ctx.measureText("1");
-            const textHeight = baseMetrics.actualBoundingBoxAscent + baseMetrics.actualBoundingBoxDescent;
+            const textHeight = pt;
             const lineHeight = textHeight * this.currentStyle.lineHeight;
 
             ctx.fillStyle = 'white'; // blank = white background
@@ -206,6 +200,49 @@ export abstract class ImagePrinterService implements IPrinterService {
         return imageData;
     }
 
+    public printHtml(html: string) {
+        if (!this._htmlContainer) {
+            const div = document.createElement("div");
+            div.style.position = "absolute";
+            div.style.left = "-9999px";
+            div.style.width = `${this.option.width}px`;
+            document.body.appendChild(div);
+            this._htmlContainer = div;
+            div.style.left = "0";
+            div.style.top = "0";
+            div.style.zIndex = "999";
+        }
+
+        this._htmlContainer.innerHTML = html;
+        html2canvas(this._htmlContainer, {
+            scale: 1,
+            useCORS: true,
+            backgroundColor: null,
+        }).then(canvas => {
+            const ctx = canvas.getContext('2d')!;
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            this.printImage(imageData.data.buffer, imageData.width, imageData.height);
+        });
+    }
+
+    public printGrid(option: IGridOption, data: string[][]): void {
+        const gridStyle = [
+            'display:grid',
+            `grid-template-columns: ${option.columns.map(o => o.width ? `${o.width}fr` : 'auto').join(" ")}`,
+            `gap: ${(option.gap?.[0] ?? 0)}px ${(option.gap?.[1] ?? 0)}px`,
+            `line-height: ${this.currentStyle.lineHeight}`,
+            `font-family: sans-serif`
+        ];
+        const styles = option.columns.map(o => {
+            const align = o.align ?? this.currentStyle.align;
+            const alignStyle = align == TextAlign.center ? 'center' : align == TextAlign.right ? 'right' : 'left';
+            return `font-size:${(o.fontSize ?? this.currentStyle.font.size)}px;text-align:${(alignStyle)}`;
+        });
+        const html = `<div style='${gridStyle.join(';')}'>
+        ${data.flatMap(row => row.map((col, ix) => `<div style='${styles[ix]}'>${col}</div>`)).join('')}
+</div>`;
+        this.printHtml(html);
+    }
 
     public setDefaultStyle(style: TextStyle): void {
         this.defaultStyle = style;
