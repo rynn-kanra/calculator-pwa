@@ -1,10 +1,9 @@
-// src/workers/sw.ts
+// src/sw.ts
 var CACHE_NAME = "preact-calculator-cache-v1";
 var FILES_TO_CACHE = [
   "./index.html",
   "./manifest.json",
   "./assets/images/icon.png",
-  "./sw.js",
   "./index.js",
   "./assets/audio/click-in.mp3",
   "./index.css"
@@ -45,24 +44,39 @@ sw.addEventListener("fetch", (event) => {
   if (requestUrl.origin !== self.origin) {
     return;
   }
-  const controller = new AbortController;
-  const t = setTimeout(() => controller.abort(), 5000);
-  event.respondWith(fetch(event.request, { signal: controller.signal }).then(async (response) => {
-    if (response.type == "basic") {
-      if (response.status == 200) {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-      } else if (response.status >= 400) {
-        const d = await caches.match(event.request);
-        if (d) {
-          return d;
+  if (requestUrl.pathname.endsWith("/index.js")) {
+    const controller = new AbortController;
+    const t = setTimeout(() => controller.abort(), 5000);
+    event.respondWith(fetch(event.request, { signal: controller.signal }).then(async (response) => {
+      if (response.type == "basic") {
+        if (response.status == 200) {
+          const copy = response.clone();
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(event.request, copy);
+        } else if (response.status >= 400) {
+          const d = await caches.match(event.request);
+          if (d) {
+            return d;
+          }
         }
       }
+      return response;
+    }).catch(() => {
+      return caches.match(event.request);
+    }).finally(() => {
+      clearTimeout(t);
+    }));
+    return;
+  }
+  event.respondWith(caches.match(event.request).then((cachedResponse) => {
+    if (cachedResponse) {
+      return cachedResponse;
     }
-    return response;
-  }).catch(() => {
-    return caches.match(event.request);
-  }).finally(() => {
-    clearTimeout(t);
+    return fetch(event.request).then((networkResponse) => {
+      return caches.open(CACHE_NAME).then((cache) => {
+        cache.put(event.request, networkResponse.clone());
+        return networkResponse;
+      });
+    });
   }));
 });
