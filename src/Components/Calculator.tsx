@@ -3,6 +3,7 @@ import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterServi
 import { FontMode, IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
+import { IOCRService } from '../Services/OCRService';
 import ScreenService from '../Services/ScreenService';
 import SettingService from '../Services/SettingService';
 import OSpeechService from '../Services/SpeechService';
@@ -22,8 +23,8 @@ if (setting.keepScreenAwake !== false) {
   ScreenService.keepScreenAwake();
 }
 
+let imageInput: HTMLInputElement | undefined;
 const SpeechService = OSpeechService;
-
 let printer: IPrinterService | undefined = new LogPrinterService(setting.defaultConfig);
 printer.init();
 setting.apply(printer);
@@ -137,7 +138,7 @@ export function Calculator() {
   const fixFloat = (n: number) => {
     return Number((n + Number.EPSILON).toFixed(15));
   }
-  const handleClick = (value: string) => {
+  const handleClick = async (value: string) => {
     if (navigator.vibrate) {
       navigator.vibrate(100); // vibrate for 10 milliseconds
     }
@@ -153,6 +154,33 @@ export function Calculator() {
     }
 
     switch (value) {
+      case "📷︎": {
+        if (!imageInput) {
+          let ocrService: IOCRService = null;
+          await ocrService.init();
+          imageInput = document.createElement("input") as HTMLInputElement;
+          imageInput.type = 'file';
+          imageInput.multiple = true;
+          imageInput.onchange
+          imageInput.setAttribute("type", "file");
+          imageInput.setAttribute("multiple", "");
+          imageInput.onchange = async () => {
+            if (!imageInput?.files) return;
+            let text = await ocrService.recognize(imageInput.files[0]);
+            const calcCommand = CalcParser(text);
+            console.log(calcCommand);
+            if (input) {
+              clickRef.current("+");
+            }
+            inputBatch(calcCommand);
+          };
+          document.body.appendChild(imageInput);
+          imageInput.style.display = "none";
+        }
+        imageInput.value = '';
+        imageInput.click();
+        break;
+      }
       case " ": {
         break;
       }
@@ -616,7 +644,7 @@ export function Calculator() {
 
   /*'△','▽','±', ' ', '00', '⚙' */
   const buttons = [
-    '⎙', '⍐', 'CHECK', '☊',
+    '⎙', '⍐', 'CHECK', '📷︎', // '☊',
     'AC', 'CE', '%', '÷', '⌫',
     '7', '8', '9', '×',
     '4', '5', '6', '−',
