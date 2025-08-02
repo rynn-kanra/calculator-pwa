@@ -9547,6 +9547,7 @@ var setting = SettingService_default.get();
 if (setting.keepScreenAwake !== false) {
   ScreenService_default.keepScreenAwake();
 }
+var imageInput;
 var SpeechService2 = SpeechService_default;
 var printer = new LogPrinterService(setting.defaultConfig);
 printer.init();
@@ -9653,7 +9654,7 @@ function Calculator() {
   const fixFloat = (n2) => {
     return Number((n2 + Number.EPSILON).toFixed(15));
   };
-  const handleClick = (value) => {
+  const handleClick = async (value) => {
     if (navigator.vibrate) {
       navigator.vibrate(100);
     }
@@ -9666,6 +9667,34 @@ function Calculator() {
       source.start(0);
     }
     switch (value) {
+      case "\uD83D\uDCF7︎": {
+        if (!imageInput) {
+          let ocrService = null;
+          await ocrService.init();
+          imageInput = document.createElement("input");
+          imageInput.type = "file";
+          imageInput.multiple = true;
+          imageInput.onchange;
+          imageInput.setAttribute("type", "file");
+          imageInput.setAttribute("multiple", "");
+          imageInput.onchange = async () => {
+            if (!imageInput?.files)
+              return;
+            let text = await ocrService.recognize(imageInput.files[0]);
+            const calcCommand = CalcParser(text);
+            console.log(calcCommand);
+            if (input) {
+              clickRef.current("+");
+            }
+            inputBatch(calcCommand);
+          };
+          document.body.appendChild(imageInput);
+          imageInput.style.display = "none";
+        }
+        imageInput.value = "";
+        imageInput.click();
+        break;
+      }
       case " ": {
         break;
       }
@@ -10103,7 +10132,7 @@ function Calculator() {
     "⎙",
     "⍐",
     "CHECK",
-    "☊",
+    "\uD83D\uDCF7︎",
     "AC",
     "CE",
     "%",
@@ -10486,5 +10515,4 @@ function App() {
 }
 
 // src/index.ts
-window.matht = CalcParser;
 E(_(App, null), document.getElementById("app"));
