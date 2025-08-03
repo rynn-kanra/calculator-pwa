@@ -3,10 +3,11 @@ import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterServi
 import { FontMode, IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
-import { IOCRService } from '../Services/OCRService';
+import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
+import { IOCRService } from '../Services/OCR/OCRService';
 import ScreenService from '../Services/ScreenService';
 import SettingService from '../Services/SettingService';
-import OSpeechService from '../Services/SpeechService';
+import { SpeechService } from '../Services/SpeechService';
 import '../styles/button.css';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
@@ -23,16 +24,19 @@ if (setting.keepScreenAwake !== false) {
   ScreenService.keepScreenAwake();
 }
 
+let ocrService: IOCRService;
 let imageInput: HTMLInputElement | undefined;
-const SpeechService = OSpeechService;
+let speechService: SpeechService;
 let printer: IPrinterService | undefined = new LogPrinterService(setting.defaultConfig);
 printer.init();
 setting.apply(printer);
 (globalThis as any).printer = printer;
 export function Calculator() {
+  const [isOCRReady, setOCRReady] = useState(false);
   const [isCheckView, openCheckView] = useState(false);
   const [showSetting, openSetting] = useState(false);
   const [isListening, setListening] = useState(false);
+  const [isProcessing, setProcessing] = useState(false);
   const clickRef = useRef((a: string) => { });
   const inAudioCtxRef = useRef<AudioContext | null>(null);
   const inBufferRef = useRef<AudioBuffer | null>(null);
@@ -41,6 +45,57 @@ export function Calculator() {
   const [operator, setOperator] = useState('');
   const [display, setDisplay] = useState('');
   const [checkIndex, setCheckIndex] = useState(-1);
+
+  /*'△','▽','±', ' ', '00', '⚙' */
+  const buttons = [
+    '⎙', '⍐', 'CHECK', '📷︎', // '☊',
+    'AC', 'CE', '%', '÷', '⌫',
+    '7', '8', '9', '×',
+    '4', '5', '6', '−',
+    '1', '2', '3', '+',
+    '0', setting.show3Zero ? '000' : '00', '.', '='
+  ];
+
+  const checkOCRDepedencies = () => {
+    Promise.all(
+      ocrService.depedencies.map(o => caches.match(o))
+    ).then(os => os.every(p => !!p))
+      .then(o => {
+        setOCRReady(o);
+        if (o) {
+          ocrService.init();
+        }
+      });
+  };
+  useEffect(() => {
+    if (buttons.indexOf('📷︎') !== -1) {
+      ocrService = new GutenyeOCRService();
+      checkOCRDepedencies();
+    }
+    if (buttons.indexOf('☊') !== -1) {
+      speechService = new SpeechService();
+    }
+
+    window.onmessage = (ev) => {
+      if (ev.data) {
+        switch (ev.data.type) {
+          case "DOWNLOAD": {
+            if (ev.data.status) {
+              switch (ev.data.id) {
+                case "ocr":
+                case "onnx": {
+                  checkOCRDepedencies();
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+    };
+  }, []);
+
 
   const requestPrinter = async () => {
     try {
@@ -138,7 +193,7 @@ export function Calculator() {
   const fixFloat = (n: number) => {
     return Number((n + Number.EPSILON).toFixed(15));
   }
-  const handleClick = async (value: string) => {
+  const handleClick = (value: string) => {
     if (navigator.vibrate) {
       navigator.vibrate(100); // vibrate for 10 milliseconds
     }
@@ -156,29 +211,43 @@ export function Calculator() {
     switch (value) {
       case "📷︎": {
         if (!imageInput) {
-          let ocrService: IOCRService = null;
-          await ocrService.init();
           imageInput = document.createElement("input") as HTMLInputElement;
           imageInput.type = 'file';
           imageInput.multiple = true;
-          imageInput.onchange
-          imageInput.setAttribute("type", "file");
-          imageInput.setAttribute("multiple", "");
-          imageInput.onchange = async () => {
-            if (!imageInput?.files) return;
-            let text = await ocrService.recognize(imageInput.files[0]);
-            const calcCommand = CalcParser(text);
-            console.log(calcCommand);
-            if (input) {
-              clickRef.current("+");
-            }
-            inputBatch(calcCommand);
-          };
-          document.body.appendChild(imageInput);
           imageInput.style.display = "none";
+          document.body.appendChild(imageInput);
+          imageInput.onchange = async () => {
+            if (!imageInput!.files) return;
+            try {
+              setProcessing(true);
+              const text = await ocrService.recognize(imageInput!.files[0]);
+              console.log(text);
+
+              const d = text.split('\n').map(o => {
+                const ix = o.lastIndexOf(' ');
+                return o.substring(ix);
+              }).join('');
+
+              console.log(d);
+              const commands = CalcParser(d);
+              console.log(commands);
+              if (input) {
+                clickRef.current("+");
+              }
+              inputBatch(commands);
+            }
+            catch (e) {
+              alert(e);
+            }
+            finally {
+              setProcessing(false);
+            }
+          };
         }
+
         imageInput.value = '';
         imageInput.click();
+
         break;
       }
       case " ": {
@@ -641,17 +710,6 @@ export function Calculator() {
     inputBatch(pastedText);
   };
 
-
-  /*'△','▽','±', ' ', '00', '⚙' */
-  const buttons = [
-    '⎙', '⍐', 'CHECK', '📷︎', // '☊',
-    'AC', 'CE', '%', '÷', '⌫',
-    '7', '8', '9', '×',
-    '4', '5', '6', '−',
-    '1', '2', '3', '+',
-    '0', setting.show3Zero ? '000' : '00', '.', '='
-  ];
-
   useEffect(() => {
     inAudioCtxRef.current = new AudioContext();
 
@@ -749,6 +807,7 @@ export function Calculator() {
       >
         {buttons.map((b, index) => {
           let show = true;
+          let disabled = false;
           let color = 'black';
           let gridRow = '';
           let isNumber = '0123456789.'.includes(b[0]);
@@ -891,6 +950,10 @@ export function Calculator() {
               }
               break;
             }
+            case '📷︎': {
+              disabled = !isOCRReady;
+              break;
+            }
             case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
               handlers = useLongPress({
                 onClick: () => clickRef.current(b),
@@ -906,6 +969,7 @@ export function Calculator() {
           return (show && <button
             class="press-button"
             key={b}
+            disabled={disabled}
             style={{
               fontSize: fontSize,
               gridColumn: gridRow,
@@ -954,7 +1018,7 @@ export function Calculator() {
         </div>
       </BottomPopup>
       {/* setting Popup Area */}
-      <SettingPopup isOpen={showSetting} onClose={(set) => {
+      <SettingPopup isOpen={showSetting} isOCRReady={isOCRReady} ocr={ocrService} onClose={(set) => {
         if (printer) {
           set.apply(printer);
         }
@@ -965,6 +1029,10 @@ export function Calculator() {
       {/* Listening Popup */}
       <BottomPopup isOpen={isListening} hideClose={true} onClose={() => { listenKeyboard = true; SpeechService.stop(); }}>
         <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>Listening</h4>
+      </BottomPopup>
+      {/* Processing Popup */}
+      <BottomPopup isOpen={isProcessing} hideClose={true}>
+        <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>Processing</h4>
       </BottomPopup>
     </div>
   );

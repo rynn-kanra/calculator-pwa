@@ -34,7 +34,7 @@ declare global {
     }
 }
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-class SpeechService {
+export class SpeechService {
     private _recognition?: SpeechRecognition;
     private _isPermissionGranted: boolean = false;
     private _isListening: boolean = false;
@@ -115,8 +115,4 @@ class SpeechService {
 
         this._recognition.stop();
     }
-
-    public static default = new SpeechService();
 }
-
-export default SpeechService.default;

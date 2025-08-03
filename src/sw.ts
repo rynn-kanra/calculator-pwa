@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 
+const isDev = false;
 const CACHE_NAME = 'preact-calculator-cache-v1';
 const FILES_TO_CACHE = [
     './index.html',
@@ -20,10 +21,11 @@ sw.addEventListener('install', (event: ExtendableEvent) => {
                     if (!cached) {
                         const response = await fetch(file);
                         if (response.ok) {
-                            await cache.put(file, response);
                             if (file == "./index.html") {
-                                await cache.put("./", response);
+                                const copy = response.clone();
+                                await cache.put("./", copy);
                             }
+                            await cache.put(file, response);
                         }
                     }
                 })())
@@ -51,6 +53,10 @@ sw.addEventListener('activate', (event) => {
 });
 
 sw.addEventListener('fetch', (event) => {
+    if (isDev) {
+        return;
+    }
+
     if (event.request.method !== 'GET') {
         return;
     }
@@ -113,4 +119,31 @@ sw.addEventListener('fetch', (event) => {
             });
         })
     );
+});
+
+sw.addEventListener('backgroundfetchsuccess', (event: BackgroundFetchUpdateUIEvent) => {
+    event.waitUntil((async () => {
+        const records = await event.registration.matchAll();
+        const cache = await caches.open(CACHE_NAME);
+
+        // Copy each request/response across.
+        const promises = records.map(async (record) => {
+            const response = await record.responseReady;
+            await cache.put(record.request, response);
+        });
+
+        // Wait for the copying to complete.
+        await Promise.all(promises);
+
+        // Update the progress notification.
+        event.updateUI({ title: `download completed` });
+
+        const clients = await sw.clients.matchAll();
+        for (const client of clients) {
+            client.postMessage({ type: 'DOWNLOAD', status: true, id: event.registration.id });
+        }
+    })());
+});
+sw.addEventListener('backgroundfetchfail', (event: BackgroundFetchUpdateUIEvent) => {
+    // TODO
 });

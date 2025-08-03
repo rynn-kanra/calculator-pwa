@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "bun build src/index.ts src/workers/sw.ts --outdir docs --outfile index.js --watch",
+    "build": "bun build src/index.ts src/sw.ts src/workers/gutenye.ts --outdir docs --minify",
+    "dev": "bun build src/index.ts src/sw.ts src/workers/gutenye.ts --outdir docs --outfile index.js --watch",
     "serve": "bunx serve docs"
   },
   "devDependencies": {
@@ -16,8 +17,10 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@gutenye/ocr-browser": "^1.4.8",
     "@types/html2canvas": "^1.0.0",
     "html2canvas": "^1.4.1",
+    "onnxruntime-web": "^1.22.0",
     "preact": "^10.26.9"
   }
 }

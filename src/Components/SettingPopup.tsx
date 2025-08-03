@@ -1,7 +1,9 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { CalculatorConfig } from '../Model/CalculatorConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
+import { IOCRService } from '../Services/OCR/OCRService';
 import SettingService from '../Services/SettingService';
+import { SpeechService } from '../Services/SpeechService';
 import BottomPopup from './BottomPopup';
 import './Form.css';
 
@@ -10,20 +12,100 @@ export interface SettingPopupProps {
   onClose: (setting: CalculatorConfig) => void;
   setting?: CalculatorConfig;
   printerId?: string;
+  ocr: IOCRService;
+  isOCRReady: boolean;
 }
 
+const onnx_depedencies = ["./workers/ort-wasm-simd-threaded.jsep.wasm"];
 export function SettingPopup(setting: SettingPopupProps) {
   let settingData = setting.setting!;
   if (!settingData) {
     settingData = SettingService.get();
   }
 
+  const [isONNXReady, setONNXReady] = useState(false);
   const [data] = useState(settingData);
+  useEffect(() => {
+    Promise.all(
+      onnx_depedencies.map(o => caches.match(o))
+    ).then(os => os.every(p => !!p))
+      .then(o => {
+        setONNXReady(o);
+      });
+  }, []);
 
   const onClose = () => {
     SettingService.set(data);
     setting.onClose && setting.onClose(data);
   };
+
+  const downloadOCR = () => {
+    navigator.serviceWorker.ready.then(async (swReg) => {
+      const missingDepedencies = await Promise.all(
+        setting.ocr.depedencies.map(o => caches.match(o).then(p => ({
+          url: o,
+          cache: p
+        })))
+      ).then(os => os.filter(p => !p.cache).map(p => p.url));
+      if (missingDepedencies.length <= 0) {
+        return;
+      }
+
+      const id = "ocr";
+      const existing = await swReg.backgroundFetch.get(id);
+      if (existing) {
+        await existing.abort();
+      }
+
+      await swReg.backgroundFetch.fetch(id, missingDepedencies,
+        {
+          title: `OCR Models`,
+          icons: [
+            {
+              sizes: "300x300",
+              src: "./assets/images/icon.png",
+              type: "image/png",
+            },
+          ],
+          downloadTotal: 15_594_089 + 12_509_439
+        },
+      );
+    });
+  };
+  const downloadONNX = () => {
+    navigator.serviceWorker.ready.then(async (swReg) => {
+      const missingDepedencies = await Promise.all(
+        onnx_depedencies.map(o => caches.match(o).then(p => ({
+          url: o,
+          cache: p
+        })))
+      ).then(os => os.filter(p => !p.cache).map(p => p.url));
+      if (missingDepedencies.length <= 0) {
+        return;
+      }
+
+      const id = "onnx";
+      const existing = await swReg.backgroundFetch.get(id);
+      if (existing) {
+        await existing.abort();
+      }
+
+      await swReg.backgroundFetch.fetch(id, missingDepedencies,
+        {
+          title: `ONNX Runtime`,
+          icons: [
+            {
+              sizes: "300x300",
+              src: "./assets/images/icon.png",
+              type: "image/png",
+            },
+          ],
+          downloadTotal: 21_872_216
+        },
+      );
+    });
+  };
+
   return (<BottomPopup isOpen={setting.isOpen} onClose={onClose} contentStyle={{ height: '100dvh', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0' }}>
     <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>SETTING</h4>
     <div style={{ overflow: 'auto', height: 'calc(100% - 2rem)', padding: '0 1rem', boxSizing: 'border-box' }}>
@@ -123,6 +205,16 @@ export function SettingPopup(setting: SettingPopupProps) {
             <option value={'rastar'}>Rastar</option>
             <option value={'bit'}>Bit</option>
           </select>
+        </div>
+        <div style={{
+          gridColumn: "span 2"
+        }}>
+          <button class="btn" onClick={downloadONNX} disabled={(isONNXReady === true)}>Download ONNX Runtime</button>
+        </div>
+        <div style={{
+          gridColumn: "span 2"
+        }}>
+          <button class="btn" onClick={downloadOCR} disabled={(setting.isOCRReady === true)}>Download OCR Dependencies</button>
         </div>
       </div>
     </div>

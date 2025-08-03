@@ -10,5 +10,5 @@
     "forceConsistentCasingInFileNames": true,
     "lib": ["esnext", "webworker", "dom", "dom.iterable"]
   },
-  "include": ["src"],
+  "include": ["src", "types/**/*.d.ts"],
 }
