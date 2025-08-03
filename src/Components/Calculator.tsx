@@ -223,10 +223,45 @@ export function Calculator() {
               const text = await ocrService.recognize(imageInput!.files[0]);
               console.log(text);
 
-              const d = text.split('\n').map(o => {
+              const replaceMap = new Map<RegExp, string>([
+                [/([0-9])[B&](?=[0-9])/g, '$18'],
+                [/([0-9])[Gb](?=[0-9])/g, '$11'],
+                [/([0-9])[iIl](?=[0-9])/g, '$11'],
+                [/([0-9])[q](?=[0-9])/g, '$19'],
+                [/([0-9])[oO](?=[0-9])/g, '$10'],
+                [/([0-9])[S](?=[0-9])/ig, '$15'],
+                [/([0-9])[Zz](?=[0-9])/g, '$12'],
+                [/([0-9])(?=[86]*0[86]*)[860][860][860]$/g, '$1000'],
+                [/([0-9][5])(?=[86]*0[86]*)[860][860]$/g, '$1500']
+              ]);
+              const replaceMap2 = new Map<RegExp, string>([
+                [/([0-9]).?[-]$/g, '$1000'],
+                [/[^0-9.,](?=.*[0-9]$)/g, ''],
+                [/([^50])(?=00$)/g, '$10'],
+              ]);
+              let ds = text.split('\n').map(o => {
                 const ix = o.lastIndexOf(' ');
-                return o.substring(ix);
-              }).join('');
+                return ix === -1 ? o : o.substring(ix + 1);
+              }).map(o => {
+                for (const d of replaceMap) {
+                  o = o.replaceAll(d[0], d[1]);
+                }
+                if (o.length <= 7) {
+                  for (const d of replaceMap2) {
+                    o = o.replaceAll(d[0], d[1]);
+                  }
+                }
+                else if (o.search(/[^0-9. -]/) >= 0) {
+                  return "";
+                }
+                return o;
+              });
+
+              if (ds.some(o => o.length > 3)) {
+                ds = ds.map(o => o.length > 3 ? o : "");
+              }
+
+              const d = ds.join(' ');
 
               console.log(d);
               const commands = CalcParser(d);

@@ -109,13 +109,17 @@ sw.addEventListener('fetch', (event) => {
             }
 
             // Otherwise fetch from network
-            return fetch(event.request).then(networkResponse => {
-                // Cache the new response for future requests
-                return caches.open(CACHE_NAME).then(cache => {
-                    // Clone the response because response streams can only be read once
-                    cache.put(event.request, networkResponse.clone());
-                    return networkResponse;
-                });
+            return fetch(event.request).then(response => {
+                if (response.status == 200) {
+                    // Cache the new response for future requests
+                    return caches.open(CACHE_NAME).then(cache => {
+                        // Clone the response because response streams can only be read once
+                        cache.put(event.request, response.clone());
+                        return response;
+                    });
+                }
+
+                return response;
             });
         })
     );

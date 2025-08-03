@@ -8,20 +8,20 @@ export class GutenyeOCRService extends OCRServiceBase {
 
     public override depedencies: string[] = [
         "./workers/gutenye.js",
-        './assets/models/paddleocr/ch_PP-OCRv4_det_infer.onnx',
-        './assets/models/paddleocr/ch_PP-OCRv4_rec_infer.onnx',
-        './assets/models/paddleocr/ppocr_keys_v1.txt',
+        './assets/models/paddleocr-en/det.onnx',
+        './assets/models/paddleocr-en/rec.onnx',
+        './assets/models/paddleocr-en/dictionary.txt',
     ];
     public async init(): Promise<void> {
         const ocr = await loadDefault("./workers/gutenye.js");
         this._engine = await ocr.create({
             models: {
-                detectionPath: './assets/models/paddleocr/ch_PP-OCRv4_det_infer.onnx',
-                recognitionPath: './assets/models/paddleocr/ch_PP-OCRv4_rec_infer.onnx',
-                dictionaryPath: './assets/models/paddleocr/ppocr_keys_v1.txt'
+                detectionPath: './assets/models/paddleocr-en/det.onnx',
+                recognitionPath: './assets/models/paddleocr-en/rec.onnx',
+                dictionaryPath: './assets/models/paddleocr-en/dictionary.txt'
             },
             onnxOptions: {
-                executionProviders: ['webgpu', 'wasm'],
+                executionProviders: ['wasm'],
                 graphOptimizationLevel: 'all'
             }
         });
