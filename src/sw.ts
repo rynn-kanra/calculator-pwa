@@ -21,10 +21,6 @@ sw.addEventListener('install', (event: ExtendableEvent) => {
                     if (!cached) {
                         const response = await fetch(file);
                         if (response.ok) {
-                            if (file == "./index.html") {
-                                const copy = response.clone();
-                                await cache.put("./", copy);
-                            }
                             await cache.put(file, response);
                         }
                     }
