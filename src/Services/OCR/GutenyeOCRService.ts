@@ -61,6 +61,10 @@ export class GutenyeOCRService extends OCRServiceBase {
         });
 
         const scale = Math.min(maxSize / img.width, maxSize / img.height, 1); // only downscale
+        if (scale >= 1) {
+            return input;
+        }
+
         this._canvas.width = Math.round(img.width * scale);
         this._canvas.height = Math.round(img.height * scale);
         const ctx = this._canvas.getContext('2d')!;
