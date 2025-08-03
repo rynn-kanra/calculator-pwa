@@ -44,8 +44,8 @@ export function useLongPress({
     }
   };
 
-  const handlePointerDown = (e: PointerEvent) => {
-    if (e.button !== 0) return; // only left click
+  const handlePointerDown = (e: PointerEvent | TouchEvent) => {
+    if (e instanceof PointerEvent && e.button !== 0) return; // only left click
     start();
   };
 

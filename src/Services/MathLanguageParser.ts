@@ -223,7 +223,7 @@ export function CalcParser(input: string) {
         }
     }
 
-    if (isNumber(result[result.length - 1])) {
+    if (result.length > 0 && isNumber(result[result.length - 1])) {
         result += "+";
     }
 

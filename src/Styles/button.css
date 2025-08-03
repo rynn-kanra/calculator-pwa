@@ -2,12 +2,15 @@
     background: #fff;
     transition: all 0.05s ease-in-out;
 }
-
 .press-button:active {
     background: #eee;
 }
 .press-button:focus-visible {
     outline: none;
+}
+.press-button:disabled {
+    background: #eee;
+    opacity: 0.5;
 }
 
 .result-container::-webkit-scrollbar {
