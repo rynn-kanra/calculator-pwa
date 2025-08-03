@@ -76,7 +76,7 @@ export function Calculator() {
       speechService = new SpeechService();
     }
 
-    window.onmessage = (ev) => {
+    navigator.serviceWorker.addEventListener('message', (ev) => {
       if (ev.data) {
         switch (ev.data.type) {
           case "DOWNLOAD": {
@@ -93,7 +93,7 @@ export function Calculator() {
           }
         }
       }
-    };
+    });
   }, []);
 
 

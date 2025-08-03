@@ -144,6 +144,11 @@ sw.addEventListener('backgroundfetchsuccess', (event: BackgroundFetchUpdateUIEve
         }
     })());
 });
-sw.addEventListener('backgroundfetchfail', (event: BackgroundFetchUpdateUIEvent) => {
-    // TODO
+sw.addEventListener('backgroundfetchfail', async (event: BackgroundFetchUpdateUIEvent) => {
+    event.updateUI({ title: `download failed` });
+
+    const clients = await sw.clients.matchAll();
+    for (const client of clients) {
+        client.postMessage({ type: 'DOWNLOAD', status: false, id: event.registration.id });
+    }
 });
