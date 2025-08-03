@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { CalculatorConfig } from '../Model/CalculatorConfig';
+import { CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import { IOCRService } from '../Services/OCR/OCRService';
 import SettingService from '../Services/SettingService';
@@ -124,13 +124,6 @@ export function SettingPopup(setting: SettingPopupProps) {
         <div>
           <input class='form' type='number' name="max-digit" step="1" min="6" max="15" value={data.maxDigit} onInput={(e) => { data.maxDigit = parseInt(e.target.value); }} />
         </div>
-        <div>Tombol 0 tambahan</div>
-        <div class="input-container">
-          <select class='form' value={data.show3Zero ? '000' : '00'} onInput={(e) => { data.show3Zero = e.target?.value == "000"; }}>
-            <option value={'00'}>00</option>
-            <option value={'000'}>000</option>
-          </select>
-        </div>
         <div style={{ gridColumn: 'span 2' }}>
           Nama device
           <div>
@@ -146,6 +139,12 @@ export function SettingPopup(setting: SettingPopupProps) {
             />
             <span class="slider"></span>
           </label>
+        </div>
+        <div>Susanan 0</div>
+        <div class="input-container">
+          <select class='form' value={data.layout0} onInput={(e) => { data.layout0 = e.target?.value; }}>
+          {[Layout0.mode1, Layout0.mode2, Layout0.mode3].map(o => (<option value={o}>{o}</option>))}
+          </select>
         </div>
         <div>Ukuran kertas</div>
         <div>
@@ -171,7 +170,7 @@ export function SettingPopup(setting: SettingPopupProps) {
             <option value={TextAlign.right}>Kanan</option>
           </select>
         </div>
-        <div>Cetak operator +</div>
+        <div>Cetak operator</div>
         <div class="input-container">
           <label class="switch">
             <input

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
+import { Layout0 } from '../Model/CalculatorConfig';
 import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterService';
 import { FontMode, IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
@@ -52,9 +53,22 @@ export function Calculator() {
     'AC', 'CE', '%', '÷', '⌫',
     '7', '8', '9', '×',
     '4', '5', '6', '−',
-    '1', '2', '3', '+',
-    '0', setting.show3Zero ? '000' : '00', '.', '='
+    '1', '2', '3', '+'
   ];
+  switch(setting.layout0){
+    case Layout0.mode2:{
+      buttons.push(...['0', '00', '.', '=']);
+      break;
+    }
+    case Layout0.mode3:{
+      buttons.push(...['0', '00', '000', '=']);
+      break;
+    }
+    default:{
+      buttons.push(...['0', '000', '.', '=']);
+      break;
+    }
+  }
 
   const checkOCRDepedencies = () => {
     Promise.all(

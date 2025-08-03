@@ -1,6 +1,11 @@
 import { FontMode, IPrinterService, TextAlign } from "../PrinterService/IPrinterService";
 import { PrinterConfig } from "./PrinterConfig"
 
+export enum Layout0{
+  mode1 = "0|000|.",
+  mode2 = "0|00|.",
+  mode3 = "0|00|000"
+}
 export class CalculatorConfig {
   public maxDecimal: number = 8;
   public maxDigit: number = 15;
@@ -9,7 +14,7 @@ export class CalculatorConfig {
   public keepScreenAwake: boolean = true;
   public align: TextAlign = TextAlign.right;
   public printOperator: boolean = false;
-  public show3Zero: boolean = true;
+  public layout0: Layout0 = Layout0.mode1;
   public defaultConfig: PrinterConfig = new PrinterConfig();
   public printerConfig: { [key: string]: PrinterConfig } = {};
 
