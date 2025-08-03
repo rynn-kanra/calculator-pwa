@@ -214,6 +214,8 @@ export function Calculator() {
           imageInput = document.createElement("input") as HTMLInputElement;
           imageInput.type = 'file';
           imageInput.multiple = true;
+          imageInput.accept = "image/*";
+          imageInput.capture="environment";
           imageInput.style.display = "none";
           document.body.appendChild(imageInput);
           imageInput.onchange = async () => {
