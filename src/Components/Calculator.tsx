@@ -21,10 +21,6 @@ let input: string = "";
 
 let listenKeyboard = true;
 let setting = SettingService.get();
-if (setting.keepScreenAwake !== false) {
-  ScreenService.keepScreenAwake();
-}
-
 let ocrService: IOCRService;
 let imageInput: HTMLInputElement | undefined;
 let speechService: SpeechService;
@@ -211,6 +207,9 @@ export function Calculator() {
     if (navigator.vibrate) {
       navigator.vibrate(100); // vibrate for 10 milliseconds
     }
+    if (setting.keepScreenAwake !== false) {
+      ScreenService.keepScreenAwake();
+    }   
 
     // play click sound
     const ctx = inAudioCtxRef.current;

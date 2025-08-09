@@ -26,6 +26,8 @@ body {
     padding: 0;
     touch-action: manipulation;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
     user-zoom: initial;
     height: 100dvh;
     overflow: hidden;
