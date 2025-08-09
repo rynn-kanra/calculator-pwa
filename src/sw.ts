@@ -1,15 +1,7 @@
 /// <reference lib="webworker" />
 
-const isDev = false;
-const CACHE_NAME = 'preact-calculator-cache-v1';
-const FILES_TO_CACHE = [
-    './index.html',
-    './manifest.json',
-    './assets/images/icon.png',
-    './index.js',
-    './assets/audio/click-in.mp3',
-    './index.css',
-];
+import DownloadService from "./Services/DownloadService";
+import { isDev, CACHE_NAME, FILES_TO_CACHE } from "./Utility/config";
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 sw.addEventListener('install', (event: ExtendableEvent) => {
@@ -20,8 +12,8 @@ sw.addEventListener('install', (event: ExtendableEvent) => {
                     const cached = await cache.match(file);
                     if (!cached) {
                         const response = await fetch(file);
-                        if (response.ok) {
-                            await cache.put(file, response);
+                        if (response.ok && !response.redirected) {
+                            await cache.put(file, response.clone());
                         }
                     }
                 })())
@@ -72,14 +64,13 @@ sw.addEventListener('fetch', (event) => {
                     if (response.type == "basic") {
                         if (response.status == 200) {
                             // update cache with latest version
-                            const copy = response.clone();
-                            const cache = await caches.open(CACHE_NAME)
-                            cache.put(event.request, copy);
+                            const reponseClone = response.clone();
+                            caches.open(CACHE_NAME).then(cache => cache.put(event.request, reponseClone));
                         }
                         else if (response.status >= 400) {
                             const d = await caches.match(event.request);
                             if (d) {
-                                return d;
+                                return d.clone();
                             }
                         }
                     }
@@ -99,18 +90,19 @@ sw.addEventListener('fetch', (event) => {
 
     // always use cache for other files
     event.respondWith(
-        caches.match(event.request).then(cachedResponse => {
+        caches.match(event.request).then(async cachedResponse => {
             if (cachedResponse) {
                 return cachedResponse;
             }
 
             // Otherwise fetch from network
             return fetch(event.request).then(response => {
-                if (response.status == 200) {
+                if (response.status == 200 && !response.redirected) {
+                    const responseClone = response.clone();
                     // Cache the new response for future requests
                     return caches.open(CACHE_NAME).then(cache => {
                         // Clone the response because response streams can only be read once
-                        cache.put(event.request, response.clone());
+                        cache.put(event.request, responseClone);
                         return response;
                     });
                 }
@@ -152,3 +144,21 @@ sw.addEventListener('backgroundfetchfail', async (event: BackgroundFetchUpdateUI
         client.postMessage({ type: 'DOWNLOAD', status: false, id: event.registration.id });
     }
 });
+
+const messageAction: { [key in string]: (...params: any[]) => Promise<void> } = {};
+sw.addEventListener('message', (event) => {
+    if (!event.data?.action) {
+        return;
+    }
+
+    const action = event.data.action;
+    const params = event.data.params || [];
+    const fn = messageAction[action];
+    if (fn) {
+        fn.call(null, ...params);
+    }
+});
+
+messageAction["BackgroundFeth"] =  async (id: string, files: string[], options: BackgroundFetchOptions) => {
+    DownloadService.notifHandler(sw, id, files, options);
+};

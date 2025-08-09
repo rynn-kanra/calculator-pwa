@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
+import DownloadService from '../Services/DownloadService';
 import { IOCRService } from '../Services/OCR/OCRService';
 import SettingService from '../Services/SettingService';
 import { SpeechService } from '../Services/SpeechService';
@@ -40,69 +41,29 @@ export function SettingPopup(setting: SettingPopupProps) {
   };
 
   const downloadOCR = () => {
-    navigator.serviceWorker.ready.then(async (swReg) => {
-      const missingDepedencies = await Promise.all(
-        setting.ocr.depedencies.map(o => caches.match(o).then(p => ({
-          url: o,
-          cache: p
-        })))
-      ).then(os => os.filter(p => !p.cache).map(p => p.url));
-      if (missingDepedencies.length <= 0) {
-        return;
-      }
-
-      const id = "ocr";
-      const existing = await swReg.backgroundFetch.get(id);
-      if (existing) {
-        await existing.abort();
-      }
-
-      await swReg.backgroundFetch.fetch(id, missingDepedencies,
+    DownloadService.download("ocr", setting.ocr.depedencies, {
+      title: `OCR Models`,
+      icons: [
         {
-          title: `OCR Models`,
-          icons: [
-            {
-              sizes: "300x300",
-              src: "./assets/images/icon.png",
-              type: "image/png",
-            },
-          ],
-          downloadTotal: 15_594_089 + 12_509_439
+          sizes: "300x300",
+          src: "./assets/images/icon.png",
+          type: "image/png",
         },
-      );
+      ],
+      downloadTotal: 15_594_089 + 12_509_439
     });
   };
   const downloadONNX = () => {
-    navigator.serviceWorker.ready.then(async (swReg) => {
-      const missingDepedencies = await Promise.all(
-        onnx_depedencies.map(o => caches.match(o).then(p => ({
-          url: o,
-          cache: p
-        })))
-      ).then(os => os.filter(p => !p.cache).map(p => p.url));
-      if (missingDepedencies.length <= 0) {
-        return;
-      }
-
-      const id = "onnx";
-      const existing = await swReg.backgroundFetch.get(id);
-      if (existing) {
-        await existing.abort();
-      }
-
-      await swReg.backgroundFetch.fetch(id, missingDepedencies,
+    DownloadService.download("onnx", onnx_depedencies, {
+      title: `ONNX Runtime`,
+      icons: [
         {
-          title: `ONNX Runtime`,
-          icons: [
-            {
-              sizes: "300x300",
-              src: "./assets/images/icon.png",
-              type: "image/png",
-            },
-          ],
-          downloadTotal: 21_872_216
+          sizes: "300x300",
+          src: "./assets/images/icon.png",
+          type: "image/png",
         },
-      );
+      ],
+      downloadTotal: 21_872_216
     });
   };
 
@@ -143,7 +104,7 @@ export function SettingPopup(setting: SettingPopupProps) {
         <div>Susanan 0</div>
         <div class="input-container">
           <select class='form' value={data.layout0} onInput={(e) => { data.layout0 = e.target?.value; }}>
-          {[Layout0.mode1, Layout0.mode2, Layout0.mode3].map(o => (<option value={o}>{o}</option>))}
+            {[Layout0.mode1, Layout0.mode2, Layout0.mode3].map(o => (<option value={o}>{o}</option>))}
           </select>
         </div>
         <div>Ukuran kertas</div>

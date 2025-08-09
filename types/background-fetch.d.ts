@@ -8,13 +8,16 @@ interface BackgroundFetchManager {
     get(id: string): Promise<BackgroundFetchRegistration>;
 }
 
-interface BackgroundFetchOptions {
+interface BackgroundFetchUIOptions {
     title?: string;
     icons?: Array<{
-        sizes: string;
         src: string;
-        type: string;
+        sizes?: string;
+        type?: string;
+        label?: string;
     }>;
+}
+interface BackgroundFetchOptions extends BackgroundFetchUIOptions {
     downloadTotal?: number;
 }
 
@@ -44,9 +47,8 @@ interface ServiceWorkerRegistration {
 interface BackgroundFetchEvent extends ExtendableEvent {
     readonly registration: BackgroundFetchRegistration;
 }
-
 interface BackgroundFetchUpdateUIEvent extends BackgroundFetchEvent {
-    updateUI(options?: any): Promise<undefined>;
+    updateUI(options?: BackgroundFetchUIOptions): Promise<undefined>;
 }
 
 interface ServiceWorkerGlobalScopeEventMap {
