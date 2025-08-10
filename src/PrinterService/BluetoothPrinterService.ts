@@ -1,4 +1,5 @@
 import { PrinterConfig } from "../Model/PrinterConfig";
+import { copy } from "../Utility/copy";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { ESCPrinterService } from "./ESCPrinterService";
 import { TextStyle } from "./IPrinterService";
@@ -47,6 +48,11 @@ const DEVICE_PROFILES: DeviceProfile[] = [
 export class BluetoothPrinterService extends ESCPrinterService {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
         super(option, style);
+        copy(this.option, {
+            bluetoothOption: {
+                mtu: 50
+            }
+        });
     }
 
     private _profile?: DeviceProfile;
@@ -68,6 +74,11 @@ export class BluetoothPrinterService extends ESCPrinterService {
                 }))
             });
         }
+
+        device.addEventListener("gattserverdisconnected", (e) => {
+            this._connection = undefined;
+        });
+
         const server = await device.gatt?.connect()!;
         const serviceIds = await server.getPrimaryServices().then(o => o.map(p => p.uuid as BluetoothServiceUUID));
         this._profile = DEVICE_PROFILES.find(o => {
@@ -111,12 +122,11 @@ export class BluetoothPrinterService extends ESCPrinterService {
     declare public device?: BluetoothDevice | undefined;
     declare public option: PrinterConfig;
     public async execute(command: Uint8Array): Promise<void> {
-        const delay = 0;
-        const chunkSize = this.option.mtu; // 20-512, (232) - 20 for safe value but slower
+        const chunkSize = this.option.bluetoothOption.mtu;
         if (command.length <= chunkSize) {
             await this._connection?.writeValue(command);
-            if (delay) {
-                await new Promise(resolve => setTimeout(resolve, delay));
+            if (this.option.bluetoothOption.delayTime) {
+                await new Promise(resolve => setTimeout(resolve, this.option.bluetoothOption.delayTime));
             }
             return;
         }
@@ -125,8 +135,8 @@ export class BluetoothPrinterService extends ESCPrinterService {
         do {
             const chunk = command.slice(offset, offset + chunkSize);
             await this._connection?.writeValue(chunk);
-            if (delay) {
-                await new Promise(resolve => setTimeout(resolve, delay));
+            if (this.option.bluetoothOption.delayTime) {
+                await new Promise(resolve => setTimeout(resolve, this.option.bluetoothOption.delayTime));
             }
 
             offset += chunkSize;

@@ -116,10 +116,6 @@ export function Calculator() {
 
       await d.init(id);
       setting.apply(d);
-      if (!id && d.device?.id) {
-        setting.lastPrinterId = d.device.id;
-        SettingService.set(setting);
-      }
       if (printer) {
         printer.dispose();
       }

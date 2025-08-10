@@ -4,7 +4,7 @@ import './BottomPopup.css';
 
 export interface BottomPopupProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   hideClose?: boolean;
   contentStyle?: JSXInternal.Signalish<string | JSXInternal.CSSProperties | undefined>,
   children: preact.ComponentChildren;
