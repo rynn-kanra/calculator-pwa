@@ -54,7 +54,7 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
-    if (requestUrl.pathname.endsWith("/index.js")) {
+    if (requestUrl.pathname.endsWith("/index.js") || requestUrl.pathname.endsWith("/index.css")) {
         // always try network for index.js
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), 5000);

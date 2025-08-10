@@ -18,6 +18,7 @@ import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
 import { SettingPopup } from './SettingPopup';
 import { USBPrinterService } from '../PrinterService/USBPrinterService';
+import { CheckPopup } from './CheckPopup';
 
 const exps: [string, number][] = [];
 let temp: string = "";
@@ -47,6 +48,8 @@ export function Calculator() {
   const [operator, setOperator] = useState('');
   const [display, setDisplay] = useState('');
   const [checkIndex, setCheckIndex] = useState(-1);
+  const [checkDatas, setCheckDatas] = useState<string[]>([]);
+  const [isCheckData, showCheckData] = useState(false);
 
   /*'△','▽','±', ' ', '00', '⚙' */
   const buttons = [
@@ -258,12 +261,12 @@ export function Calculator() {
     // play click sound
     const ctx = inAudioCtxRef.current;
     const buffer = inBufferRef.current;
-    if (ctx && buffer) {
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
-    }
+    // if (ctx && buffer) {
+    //   const source = ctx.createBufferSource();
+    //   source.buffer = buffer;
+    //   source.connect(ctx.destination);
+    //   source.start(0);
+    // }
 
     switch (value) {
       case "📷︎": {
@@ -319,16 +322,14 @@ export function Calculator() {
               if (ds.some(o => o.length > 3)) {
                 ds = ds.map(o => o.length > 3 ? o : "");
               }
-
+              
               const d = ds.join(' ');
 
               console.log(d);
               const commands = CalcParser(d);
               console.log(commands);
-              if (input) {
-                clickRef.current("+");
-              }
-              inputBatch(commands);
+              setCheckDatas(commands.split("+"));
+              showCheckData(true);
             }
             catch (e) {
               alert(e);
@@ -1081,6 +1082,8 @@ export function Calculator() {
         })}
       </div>
 
+      {/* Check Popup */}
+      <CheckPopup isOpen={isCheckData} onCancel={() => showCheckData(false)} onOK={(inputs) => { showCheckData(false); inputBatch(inputs.join('+') + '+') }} datas={checkDatas} />
       {/* Check Popup Area */}
       <BottomPopup isOpen={isCheckView} hideClose={true} contentStyle={{ height: 'calc(100dvh - 6rem)', backgroundColor: '#f0f0f0', padding: '1rem 0' }} onClose={() => { openCheckView(false); }}>
         <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>CHECK</h4>

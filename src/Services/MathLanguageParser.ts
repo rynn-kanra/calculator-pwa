@@ -223,9 +223,5 @@ export function CalcParser(input: string) {
         }
     }
 
-    if (result.length > 0 && isNumber(result[result.length - 1])) {
-        result += "+";
-    }
-
     return result;
 }
