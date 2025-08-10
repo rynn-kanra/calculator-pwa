@@ -261,12 +261,12 @@ export function Calculator() {
     // play click sound
     const ctx = inAudioCtxRef.current;
     const buffer = inBufferRef.current;
-    // if (ctx && buffer) {
-    //   const source = ctx.createBufferSource();
-    //   source.buffer = buffer;
-    //   source.connect(ctx.destination);
-    //   source.start(0);
-    // }
+    if (ctx && buffer) {
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+    }
 
     switch (value) {
       case "📷︎": {
@@ -281,6 +281,7 @@ export function Calculator() {
           imageInput.onchange = async () => {
             if (!imageInput!.files) return;
             try {
+              listenKeyboard = false;
               setProcessing(true);
               const text = await ocrService.recognize(imageInput!.files[0]);
               console.log(text);
@@ -322,7 +323,7 @@ export function Calculator() {
               if (ds.some(o => o.length > 3)) {
                 ds = ds.map(o => o.length > 3 ? o : "");
               }
-              
+
               const d = ds.join(' ');
 
               console.log(d);
@@ -335,6 +336,7 @@ export function Calculator() {
               alert(e);
             }
             finally {
+              listenKeyboard = true;
               setProcessing(false);
             }
           };
@@ -343,6 +345,39 @@ export function Calculator() {
         imageInput.value = '';
         imageInput.click();
 
+        break;
+      }
+      case '☊': {
+        if (speechService.isListening) {
+          speechService.stop();
+          return;
+        }
+
+        speechService.requestPermission().then(async () => {
+          try {
+            const rprom = speechService.recognize();
+            setTimeout(() => {
+              listenKeyboard = false;
+              setListening(true);
+            }, 100);
+            const result = await rprom;
+            if (!result) {
+              return;
+            }
+            console.log(result);
+            const commands = CalcParser(result);
+            console.log(commands);
+            setCheckDatas(commands.split("+"));
+            showCheckData(true);
+          }
+          catch (e) {
+            alert(e);
+          }
+          finally {
+            listenKeyboard = true;
+            setListening(false);
+          }
+        });
         break;
       }
       case " ": {
@@ -1007,42 +1042,6 @@ export function Calculator() {
             case '%':
             case '±': {
               fontSize = '1.5rem';
-              break;
-            }
-            case '☊': {
-              handlers = {
-                onClick: async () => {
-                  if (speechService.isListening) {
-                    speechService.stop();
-                    return;
-                  }
-
-                  try {
-                    await speechService.requestPermission();
-                    const rprom = speechService.recognize();
-                    setTimeout(() => {
-                      listenKeyboard = false;
-                      setListening(true);
-                    }, 100);
-                    const result = await rprom;
-                    if (!result) {
-                      return;
-                    }
-                    console.log(result);
-                    const calcCommand = CalcParser(result);
-                    console.log(calcCommand);
-                    if (input) {
-                      clickRef.current("+");
-                    }
-                    inputBatch(calcCommand);
-                  }
-                  catch { }
-                  finally {
-                    listenKeyboard = true;
-                    setListening(false);
-                  }
-                }
-              }
               break;
             }
             case '📷︎': {

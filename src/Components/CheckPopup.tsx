@@ -15,7 +15,7 @@ export function CheckPopup({ isOpen, onOK, onCancel, datas }: SettingPopupProps)
   useEffect(() => {
     setInputs(datas);
   }, [datas]);
-  return (<BottomPopup isOpen={isOpen} onClose={() => onCancel()} hideClose={true} contentStyle={{ height: 'calc(100dvh - 6rem)', backgroundColor: '#f0f0f0', padding: '1rem 0' }}>
+  return (<BottomPopup isOpen={isOpen} onClose={() => onCancel()} hideClose={true} contentStyle={{ height: '100dvh', backgroundColor: '#f0f0f0', padding: '1rem 0' }}>
     <div style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>
       <button class="btn-small" style={{ color: "#f44336", borderColor: "#f44336" }} onClick={onCancel}>CANCEL</button>
       <button class="btn-small" style={{ color: "white", backgroundColor: "#4caf50", border: "none" }} onClick={() => onOK(inputs)}>OK</button>
