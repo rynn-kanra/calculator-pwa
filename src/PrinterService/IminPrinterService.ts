@@ -29,7 +29,7 @@ type iminPrinter = {
 const resolvedPromise = Promise.resolve();
 // DOC: https://oss-sg.imin.sg/docs/en/JSPrinterSDK.html
 export class IminPrinterService extends PrinterServiceBase<() => void> {
-    constructor(option: DeepPartial<PrinterConfig>, style?: TextStyle) {
+    constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
         super(option, style);
     }
 
