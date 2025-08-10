@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { Layout0 } from '../Model/CalculatorConfig';
+import { Layout0, PrinterType } from '../Model/CalculatorConfig';
+import { PrinterConfig } from '../Model/PrinterConfig';
 import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterService';
-import { FontMode, IPrinterService, TextAlign } from '../PrinterService/IPrinterService';
+import { IminPrinterService } from '../PrinterService/IminPrinterService';
+import { FontMode, IPrinterService, TextAlign, TextStyle } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
+import { SerialPrinterService } from '../PrinterService/SerialPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { IOCRService } from '../Services/OCR/OCRService';
@@ -10,6 +13,7 @@ import ScreenService from '../Services/ScreenService';
 import SettingService from '../Services/SettingService';
 import { SpeechService } from '../Services/SpeechService';
 import '../styles/button.css';
+import { DeepPartial } from '../Utility/DeepPartial';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
 import { SettingPopup } from './SettingPopup';
@@ -51,16 +55,16 @@ export function Calculator() {
     '4', '5', '6', '−',
     '1', '2', '3', '+'
   ];
-  switch(setting.layout0){
-    case Layout0.mode2:{
+  switch (setting.layout0) {
+    case Layout0.mode2: {
       buttons.push(...['0', '00', '.', '=']);
       break;
     }
-    case Layout0.mode3:{
+    case Layout0.mode3: {
       buttons.push(...['0', '00', '000', '=']);
       break;
     }
-    default:{
+    default: {
       buttons.push(...['0', '000', '.', '=']);
       break;
     }
@@ -109,7 +113,23 @@ export function Calculator() {
 
   const requestPrinter = async () => {
     try {
-      const d = new BluetoothPrinterService(setting.defaultConfig, {
+      let type: (new (option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) => IPrinterService) | null = null;
+      switch (setting.printerType) {
+        case PrinterType.Serial: {
+          type = SerialPrinterService;
+          break;
+        }
+        case PrinterType.Imin: {
+          type = IminPrinterService;
+          break;
+        }
+        case PrinterType.Bluetooth:
+        default: {
+          type = BluetoothPrinterService;
+          break;
+        }
+      }
+      const d = new type(setting.defaultConfig, {
         align: setting.align,
         font: {
           size: setting.defaultConfig.fontSize,
@@ -209,7 +229,7 @@ export function Calculator() {
     }
     if (setting.keepScreenAwake !== false) {
       ScreenService.keepScreenAwake();
-    }   
+    }
 
     // play click sound
     const ctx = inAudioCtxRef.current;
@@ -228,7 +248,7 @@ export function Calculator() {
           imageInput.type = 'file';
           imageInput.multiple = true;
           imageInput.accept = "image/*";
-          imageInput.capture="environment";
+          imageInput.capture = "environment";
           imageInput.style.display = "none";
           document.body.appendChild(imageInput);
           imageInput.onchange = async () => {
@@ -967,14 +987,14 @@ export function Calculator() {
             case '☊': {
               handlers = {
                 onClick: async () => {
-                  if (SpeechService.isListening) {
-                    SpeechService.stop();
+                  if (speechService.isListening) {
+                    speechService.stop();
                     return;
                   }
 
                   try {
-                    await SpeechService.requestPermission();
-                    const rprom = SpeechService.recognize();
+                    await speechService.requestPermission();
+                    const rprom = speechService.recognize();
                     setTimeout(() => {
                       listenKeyboard = false;
                       setListening(true);
@@ -1077,7 +1097,7 @@ export function Calculator() {
         listenKeyboard = true;
       }} />
       {/* Listening Popup */}
-      <BottomPopup isOpen={isListening} hideClose={true} onClose={() => { listenKeyboard = true; SpeechService.stop(); }}>
+      <BottomPopup isOpen={isListening} hideClose={true} onClose={() => { listenKeyboard = true; speechService.stop(); }}>
         <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>Listening</h4>
       </BottomPopup>
       {/* Processing Popup */}

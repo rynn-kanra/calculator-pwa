@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
-import { CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
+import { JSXInternal } from 'preact/src/jsx';
+import { CalculatorConfig, Layout0, PrinterType } from '../Model/CalculatorConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
 import { IOCRService } from '../Services/OCR/OCRService';
@@ -143,9 +144,8 @@ export function SettingPopup(setting: SettingPopupProps) {
         </div>
         <div>Tipe printer</div>
         <div>
-          <select class='form' value={data.printerType} onInput={(e) => { data.printerType = e.target.value; }}>
-            <option value={'bluetooth'}>Bluetooth</option>
-            <option value={'imin'}>Imin Built-in</option>
+          <select class='form' value={data.printerType} onInput={(e) => { data.printerType = e.target?.value as PrinterType; }}>
+            {Object.entries(PrinterType).map(([name, value]) => (<option value={value}>{name.replaceAll('_', ' ')}</option>))}
           </select>
         </div>
         <div>MTU (Maximum Transmision Unit)</div>
