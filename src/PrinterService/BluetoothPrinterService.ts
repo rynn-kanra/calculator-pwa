@@ -3,22 +3,73 @@ import { DeepPartial } from "../Utility/DeepPartial";
 import { ESCPrinterService } from "./ESCPrinterService";
 import { TextStyle } from "./IPrinterService";
 
+type DeviceProfile = {
+    service: BluetoothServiceUUID;
+    namePrefix?: string,
+    characteristics: {
+        print: BluetoothCharacteristicUUID;
+        status?: BluetoothCharacteristicUUID;
+    }
+}
+
+const DEFAULT_PROFILE: DeviceProfile = {
+    service: '000018f0-0000-1000-8000-00805f9b34fb',
+    characteristics: {
+        print: '00002af1-0000-1000-8000-00805f9b34fb',
+        status: '00002af0-0000-1000-8000-00805f9b34fb'
+    }
+};
+const DEVICE_PROFILES: DeviceProfile[] = [
+    /* Epson TM-P series, for example the TM-P20II */
+    {
+        service: '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+        namePrefix: 'TM-P',
+        characteristics: {
+            print: '49535343-8841-43f4-a8d4-ecbe34729bb3',
+            status: '49535343-1e4d-4bd9-ba61-23c647249616'
+        }
+    },
+
+    /* Star SM-L series, for example the SM-L200 */
+    {
+        service: '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+        namePrefix: 'STAR L',
+        characteristics: {
+            print: '49535343-8841-43f4-a8d4-ecbe34729bb3',
+            status: '49535343-1e4d-4bd9-ba61-23c647249616'
+        }
+    },
+
+    /* Generic printer */
+    DEFAULT_PROFILE
+];
+
 export class BluetoothPrinterService extends ESCPrinterService {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
         super(option, style);
     }
 
+    private _profile?: DeviceProfile;
     private _connection?: BluetoothRemoteGATTCharacteristic;
 
     public async init(): Promise<void> {
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{
-                services: ['000018f0-0000-1000-8000-00805f9b34fb']
-            }]
+            filters: DEVICE_PROFILES.map(o => ({
+                services: [o.service],
+            }))
         });
-        const server = await device.gatt?.connect();
-        const service = await server?.getPrimaryService("000018f0-0000-1000-8000-00805f9b34fb");
-        this._connection = await service?.getCharacteristic("00002af1-0000-1000-8000-00805f9b34fb");
+        const server = await device.gatt?.connect()!;
+        const serviceIds = await server.getPrimaryServices().then(o => o.map(p => p.uuid as BluetoothServiceUUID));
+        this._profile = DEVICE_PROFILES.find(o => {
+            let found = serviceIds.includes(o.service);
+            if (found && o.namePrefix) {
+                found = device.name?.startsWith(o.namePrefix) ?? false;
+            }
+
+            return found;
+        }) ?? DEFAULT_PROFILE;
+        const service = await server?.getPrimaryService(this._profile.service);
+        this._connection = await service?.getCharacteristic(this._profile.characteristics.print);
         this.device = device;
         if (this.option.sharePrinter) {
             device.gatt?.disconnect();
@@ -26,7 +77,7 @@ export class BluetoothPrinterService extends ESCPrinterService {
         }
     }
     public async connect(): Promise<void> {
-        if (!this.device) {
+        if (!this.device || !this._profile) {
             return;
         }
 
@@ -35,8 +86,8 @@ export class BluetoothPrinterService extends ESCPrinterService {
         }
 
         const server = await this.device.gatt?.connect();
-        const service = await server?.getPrimaryService("000018f0-0000-1000-8000-00805f9b34fb");
-        this._connection = await service?.getCharacteristic("00002af1-0000-1000-8000-00805f9b34fb");
+        const service = await server?.getPrimaryService(this._profile.service);
+        this._connection = await service?.getCharacteristic(this._profile.characteristics.print);
         this.resetPrinter();
     }
     public async disconnect(): Promise<void> {
