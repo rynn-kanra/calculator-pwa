@@ -45,7 +45,7 @@ export interface IPrinterService {
     device?: IDevice;
 
     setDefaultStyle(style: TextStyle): void;
-    init(): Promise<void>;
+    init(id?: string): Promise<void>;
     connect(): Promise<void>;
     disconnect(): Promise<void>;
     dispose(): Promise<void>;

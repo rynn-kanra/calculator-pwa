@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { Layout0, PrinterType } from '../Model/CalculatorConfig';
-import { PrinterConfig } from '../Model/PrinterConfig';
+import { Layout0 } from '../Model/CalculatorConfig';
+import { PrinterConfig, PrinterType } from '../Model/PrinterConfig';
 import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterService';
 import { IminPrinterService } from '../PrinterService/IminPrinterService';
 import { FontMode, IPrinterService, TextAlign, TextStyle } from '../PrinterService/IPrinterService';
@@ -81,6 +81,55 @@ export function Calculator() {
         }
       });
   };
+
+  const requestPrinter = async (id?: string) => {
+    try {
+      const printerConfig = setting.printerConfig[id ?? ""] ?? setting.defaultConfig;
+      let printerCtor: (new (option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) => IPrinterService);
+      switch (printerConfig.printerType) {
+        case PrinterType.Serial: {
+          printerCtor = SerialPrinterService;
+          break;
+        }
+        case PrinterType.Imin_Build_In: {
+          printerCtor = IminPrinterService;
+          break;
+        }
+        case PrinterType.Bluetooth:
+        default: {
+          printerCtor = BluetoothPrinterService;
+          break;
+        }
+      }
+      const d = new printerCtor(printerConfig, {
+        align: setting.align,
+        font: {
+          size: printerConfig.fontSize,
+          fontFaceType: printerConfig.fontFace
+        }
+      });
+
+      await d.init(id);
+      setting.apply(d);
+      if (!id && d.device?.id) {
+        setting.lastPrinterId = d.device.id;
+        SettingService.set(setting);
+      }
+      if (printer) {
+        printer.dispose();
+      }
+      printer = d;
+      (globalThis as any).printer = printer;
+      setPrinterStatus("online");
+      return true;
+    }
+    catch (e) {
+      console.log("ini printer:" + e);
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     if (buttons.indexOf('📷︎') !== -1) {
       ocrService = new GutenyeOCRService();
@@ -90,6 +139,18 @@ export function Calculator() {
       speechService = new SpeechService();
     }
 
+    if (setting.defaultConfig.autoConnect) {
+      (async () => {
+        for (const id in setting.printerConfig) {
+          const printerConfig = setting.printerConfig[id];
+          if (printerConfig?.autoConnect != true) {
+            continue;
+          }
+          const isConnected = await requestPrinter(id);
+          if (isConnected) break;
+        }
+      })();
+    }
     navigator.serviceWorker.addEventListener('message', (ev) => {
       if (ev.data) {
         switch (ev.data.type) {
@@ -111,44 +172,6 @@ export function Calculator() {
   }, []);
 
 
-  const requestPrinter = async () => {
-    try {
-      let type: (new (option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) => IPrinterService) | null = null;
-      switch (setting.printerType) {
-        case PrinterType.Serial: {
-          type = SerialPrinterService;
-          break;
-        }
-        case PrinterType.Imin: {
-          type = IminPrinterService;
-          break;
-        }
-        case PrinterType.Bluetooth:
-        default: {
-          type = BluetoothPrinterService;
-          break;
-        }
-      }
-      const d = new type(setting.defaultConfig, {
-        align: setting.align,
-        font: {
-          size: setting.defaultConfig.fontSize,
-          fontFaceType: setting.defaultConfig.fontFace
-        }
-      });
-      await d.init();
-      setting.apply(d);
-      if (printer) {
-        printer.dispose();
-      }
-      printer = d;
-      (globalThis as any).printer = printer;
-      setPrinterStatus("online");
-    }
-    catch (e) {
-      console.log("ini printer:" + e);
-    }
-  }
   const addResult = function (text: string, num: number) {
     const exp: [string, number] = [text, num];
     exps.push(exp);

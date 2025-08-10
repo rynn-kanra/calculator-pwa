@@ -52,18 +52,28 @@ export class BluetoothPrinterService extends ESCPrinterService {
     private _profile?: DeviceProfile;
     private _connection?: BluetoothRemoteGATTCharacteristic;
 
-    public async init(): Promise<void> {
-        const device = await navigator.bluetooth.requestDevice({
-            filters: DEVICE_PROFILES.map(o => ({
-                services: [o.service],
-            }))
-        });
+    public async init(id?: string): Promise<void> {
+        let device: BluetoothDevice | undefined = undefined;
+        if (id) {
+            const devices = await navigator.bluetooth.getDevices();
+            device = devices.find(o => o.id == id);
+            if (!device) {
+                throw new Error("Bluetooth Device not found");
+            }
+        }
+        else {
+            device = await navigator.bluetooth.requestDevice({
+                filters: DEVICE_PROFILES.map(o => ({
+                    services: [o.service],
+                }))
+            });
+        }
         const server = await device.gatt?.connect()!;
         const serviceIds = await server.getPrimaryServices().then(o => o.map(p => p.uuid as BluetoothServiceUUID));
         this._profile = DEVICE_PROFILES.find(o => {
             let found = serviceIds.includes(o.service);
             if (found && o.namePrefix) {
-                found = device.name?.startsWith(o.namePrefix) ?? false;
+                found = device!.name?.startsWith(o.namePrefix) ?? false;
             }
 
             return found;

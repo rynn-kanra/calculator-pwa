@@ -29,7 +29,7 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     }
 
     public device?: IDevice;
-    public abstract init(): Promise<void>;
+    public abstract init(id?: string): Promise<void>;
     public abstract connect(): Promise<void>;
     public abstract disconnect(): Promise<void>;
     public abstract execute(command: TCommand): Promise<void>;
