@@ -98,6 +98,13 @@ const DEVICE_PROFILES: DeviceProfile[] = [
     DEFAULT_PROFILE
 ];
 
+function getDeviceId(device: USBDevice) {
+    return JSON.stringify({
+        a: device.serialNumber,
+        b: device.vendorId,
+        c: device.productId
+    });
+}
 export class USBPrinterService extends ESCPrinterService {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
         super(option, style);
@@ -110,7 +117,7 @@ export class USBPrinterService extends ESCPrinterService {
         let device: USBDevice | undefined = undefined;
         if (id) {
             const devices = await navigator.usb.getDevices();
-            device = devices.find(o => o.serialNumber == id);
+            device = devices.find(o => getDeviceId(o) == id);
             if (!device) {
                 throw new Error("USB Device not found");
             }
@@ -140,7 +147,7 @@ export class USBPrinterService extends ESCPrinterService {
         await device.reset();
 
         this.device = {
-            id: device.serialNumber!,
+            id: getDeviceId(device),
             name: device.productName ?? device.manufacturerName ?? device.serialNumber ?? "usb",
             usb: device
         };
