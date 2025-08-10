@@ -33,7 +33,7 @@ export class SerialPrinterService extends ESCPrinterService {
         else {
             serialPort = await navigator.serial.requestPort();
         }
-        await serialPort.open(this.option.serialOption);
+        await serialPort.open(this.option.serialOption!);
 
         const info = serialPort.getInfo();
         this.device = {
@@ -59,7 +59,7 @@ export class SerialPrinterService extends ESCPrinterService {
         }
 
         if (!this.device.port.readable && !this.device.port.writable) {
-            await this.device.port.open(this.option.serialOption);
+            await this.device.port.open(this.option.serialOption!);
         }
 
         this._connection = this.device.port.writable.getWriter();
