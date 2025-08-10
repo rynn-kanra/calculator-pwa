@@ -17,6 +17,7 @@ import { DeepPartial } from '../Utility/DeepPartial';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
 import { SettingPopup } from './SettingPopup';
+import { USBPrinterService } from '../PrinterService/USBPrinterService';
 
 const exps: [string, number][] = [];
 let temp: string = "";
@@ -89,6 +90,10 @@ export function Calculator() {
       switch (printerConfig.printerType) {
         case PrinterType.Serial: {
           printerCtor = SerialPrinterService;
+          break;
+        }
+        case PrinterType.USB: {
+          printerCtor = USBPrinterService;
           break;
         }
         case PrinterType.Imin_Build_In: {
