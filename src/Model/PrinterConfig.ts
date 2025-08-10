@@ -19,5 +19,5 @@ export class PrinterConfig {
   public lineHeight: number = 1.2;
   public paperWidth: number = 58;
   public dpi: number = 203;
-  public serialOption?: SerialOptions;
+  public serialOption: SerialOptions;
 };

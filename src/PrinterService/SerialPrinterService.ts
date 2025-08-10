@@ -35,6 +35,9 @@ export class SerialPrinterService extends ESCPrinterService {
         if (this.option.sharePrinter) {
             await serialPort.close();
         }
+        else {
+            this._connection = this.device.port!.writable.getWriter();
+        }
     }
     public async connect(): Promise<void> {
         if (!this.device?.port) {
@@ -49,7 +52,7 @@ export class SerialPrinterService extends ESCPrinterService {
             await this.device.port.open(this.option.serialOption);
         }
 
-		this._connection = this.device.port.writable.getWriter();
+        this._connection = this.device.port.writable.getWriter();
         this.resetPrinter();
     }
     public async disconnect(): Promise<void> {
@@ -64,6 +67,7 @@ export class SerialPrinterService extends ESCPrinterService {
     declare public device?: IDevice & { port?: SerialPort };
     declare public option: PrinterConfig;
     public async execute(command: Uint8Array): Promise<void> {
+        await this._connection?.ready;  
         await this._connection?.write(command);
     }
     public override async dispose(): Promise<void> {
