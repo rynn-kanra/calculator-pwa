@@ -1,7 +1,8 @@
 export enum PrinterType {
   Bluetooth = "bluetooth",
   Serial = "serial",
-  Socket = "socket",
+  USB = "usb",
+  // Socket = "socket",
   // Network = "network", // NOT SUPPORTED
   Imin_Build_In = "imin"
 }
