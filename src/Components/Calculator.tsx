@@ -6,6 +6,7 @@ import { IminPrinterService } from '../PrinterService/IminPrinterService';
 import { FontMode, IPrinterService, TextAlign, TextStyle } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { SerialPrinterService } from '../PrinterService/SerialPrinterService';
+import { SocketPrinterService } from '../PrinterService/SocketPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { IOCRService } from '../Services/OCR/OCRService';
@@ -91,6 +92,10 @@ export function Calculator() {
           printerCtor = SerialPrinterService;
           break;
         }
+        case PrinterType.Socket: {
+          printerCtor = SocketPrinterService;
+          break;
+        }
         case PrinterType.Imin_Build_In: {
           printerCtor = IminPrinterService;
           break;
@@ -111,10 +116,6 @@ export function Calculator() {
 
       await d.init(id);
       setting.apply(d);
-      if (!id && d.device?.id) {
-        setting.lastPrinterId = d.device.id;
-        SettingService.set(setting);
-      }
       if (printer) {
         printer.dispose();
       }
