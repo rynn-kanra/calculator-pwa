@@ -37,7 +37,7 @@ export class GutenyeOCRService extends OCRServiceBase {
             const resizedImage = await this.resize(input);
             blobUrl = URL.createObjectURL(resizedImage!);
             const lines = await this._engine?.detect(blobUrl);
-            return lines?.map(o => o.text).join("\n") || "";
+            return lines?.map(o => o.text).join("\n").replaceAll('\r', '') || "";
         } finally {
             URL.revokeObjectURL(blobUrl);
         }
