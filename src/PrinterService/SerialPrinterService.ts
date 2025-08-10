@@ -21,14 +21,24 @@ export class SerialPrinterService extends ESCPrinterService {
 
     private _connection?: WritableStreamDefaultWriter;
 
-    public async init(): Promise<void> {
-        const serialPort = await navigator.serial.requestPort();
+    public async init(id?: string): Promise<void> {
+        let serialPort: SerialPort | undefined = undefined;
+        if (id) {
+            const ports = await navigator.serial.getPorts();
+            serialPort = ports.find(o => JSON.stringify(o.getInfo()) == id);
+            if (!serialPort) {
+                throw new Error("Serial Device not found");
+            }
+        }
+        else {
+            serialPort = await navigator.serial.requestPort();
+        }
         await serialPort.open(this.option.serialOption);
 
         const info = serialPort.getInfo();
         this.device = {
-            id: info.serialNumber ?? info.productId ?? info.usbProductId?.toString() ?? info.vendorId ?? info.usbVendorId?.toString() ?? info.usbProductId?.toString() ?? info.locationId ?? "serial",
-            name: info.manufacturer,
+            id: JSON.stringify(info) ?? "serial",
+            name: info.product ?? info.vendor ?? info.manufacturer ?? "serial",
             port: serialPort
         };
 
@@ -67,7 +77,7 @@ export class SerialPrinterService extends ESCPrinterService {
     declare public device?: IDevice & { port?: SerialPort };
     declare public option: PrinterConfig;
     public async execute(command: Uint8Array): Promise<void> {
-        await this._connection?.ready;  
+        await this._connection?.ready;
         await this._connection?.write(command);
     }
     public override async dispose(): Promise<void> {

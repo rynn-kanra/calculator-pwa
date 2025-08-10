@@ -2,24 +2,33 @@
     background: #fff;
     transition: all 0.05s ease-in-out;
 }
+
 .press-button:active {
     background: #eee;
 }
+
 .press-button:focus-visible {
     outline: none;
 }
+
 .press-button:disabled {
     background: #eee;
     opacity: 0.5;
+}
+
+.no-scroll-ui::-webkit-scrollbar {
+    display: none;
 }
 
 .result-container::-webkit-scrollbar {
     display: none;
     /* Chrome, Safari */
 }
+
 div:focus {
     outline: none;
 }
+
 html,
 body {
     margin: 0;

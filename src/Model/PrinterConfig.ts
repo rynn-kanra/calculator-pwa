@@ -1,3 +1,11 @@
+export enum PrinterType {
+  Bluetooth = "bluetooth",
+  Serial = "serial",
+  Socket = "socket",
+  // Network = "network", // NOT SUPPORTED
+  Imin_Build_In = "imin"
+}
+
 export class PrinterConfig {
   // typical paper width (58mm printer ≈ 384px)
   public get width(): number {
@@ -10,6 +18,9 @@ export class PrinterConfig {
       default: return this.paperWidth - 10;
     }
   };
+  public name: string = "DEFAULT";
+  public autoConnect: boolean = true;
+  public printerType: PrinterType = PrinterType.Bluetooth;
   public textAsImage: boolean = true;
   public mtu: number = 50;
   public image: "rastar" | "bit" = "rastar";
