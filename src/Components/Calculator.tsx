@@ -6,7 +6,7 @@ import { IminPrinterService } from '../PrinterService/IminPrinterService';
 import { FontMode, IPrinterService, TextAlign, TextStyle } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { SerialPrinterService } from '../PrinterService/SerialPrinterService';
-import { SocketPrinterService } from '../PrinterService/SocketPrinterService';
+import { WebSocketPrinterService } from '../PrinterService/WebSocketPrinterService';
 import { CalcParser } from '../Services/MathLanguageParser';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { IOCRService } from '../Services/OCR/OCRService';
@@ -98,7 +98,7 @@ export function Calculator() {
           break;
         }
         case PrinterType.WebSocket: {
-          printerCtor = SocketPrinterService;
+          printerCtor = WebSocketPrinterService;
           break;
         }
         case PrinterType.Imin_Build_In: {

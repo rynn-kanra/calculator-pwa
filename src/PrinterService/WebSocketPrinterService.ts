@@ -3,7 +3,7 @@ import { DeepPartial } from "../Utility/DeepPartial";
 import { ESCPrinterService } from "./ESCPrinterService";
 import { IDevice, TextStyle } from "./IPrinterService";
 
-export class SocketPrinterService extends ESCPrinterService {
+export class WebSocketPrinterService extends ESCPrinterService {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
         super(option, style);
     }
