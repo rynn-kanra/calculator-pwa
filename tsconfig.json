@@ -8,7 +8,7 @@
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["esnext", "webworker", "dom", "dom.iterable"]
+    "lib": ["ESNext", "WebWorker", "DOM", "DOM.Iterable"]
   },
   "include": ["src", "types/**/*.d.ts"],
 }
