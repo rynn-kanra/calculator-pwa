@@ -1,6 +1,6 @@
 import * as CBOR from "cbor-x";
 import dBService, { User } from "./IndexedDBService";
-import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, toBase64 } from "../Utility/crypto";
+import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array } from "../Utility/crypto";
 
 type AttestationObject = {
     authData: Uint8Array,
@@ -70,7 +70,7 @@ class IdentityService {
         if (!clientDataObj.origin.startsWith(origin)) {
             throw new Error("mismatch origin");
         }
-        if (!challenge || clientDataObj.challenge != toBase64(challenge)) {
+        if (!challenge || clientDataObj.challenge != toBase64url(challenge)) {
             throw new Error("mismatch challenge");
         }
 
