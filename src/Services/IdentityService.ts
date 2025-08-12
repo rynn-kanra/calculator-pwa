@@ -138,8 +138,8 @@ class IdentityService {
             throw new Error("User not verified");
         }
 
-        const userId = utf8Decoder.decode(cred.response.userHandle!);
-        const userData = await dBService.get("users", userId) as User;
+        const user = cred.response.userHandle ? utf8Decoder.decode(cred.response.userHandle) : userId;
+        const userData = await dBService.get("users", user) as User;
         const clientDataHash = await crypto.subtle.digest("SHA-256", cred.response.clientDataJSON);
 
         // combine data
