@@ -18,6 +18,7 @@ import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
 import { SettingPopup } from './SettingPopup';
 import { USBPrinterService } from '../PrinterService/USBPrinterService';
+import { CheckPopup } from './CheckPopup';
 
 const exps: [string, number][] = [];
 let temp: string = "";
@@ -47,6 +48,8 @@ export function Calculator() {
   const [operator, setOperator] = useState('');
   const [display, setDisplay] = useState('');
   const [checkIndex, setCheckIndex] = useState(-1);
+  const [checkDatas, setCheckDatas] = useState<string[]>([]);
+  const [isCheckData, showCheckData] = useState(false);
 
   /*'△','▽','±', ' ', '00', '⚙' */
   const buttons = [
@@ -278,6 +281,7 @@ export function Calculator() {
           imageInput.onchange = async () => {
             if (!imageInput!.files) return;
             try {
+              listenKeyboard = false;
               setProcessing(true);
               const text = await ocrService.recognize(imageInput!.files[0]);
               console.log(text);
@@ -325,15 +329,14 @@ export function Calculator() {
               console.log(d);
               const commands = CalcParser(d);
               console.log(commands);
-              if (input) {
-                clickRef.current("+");
-              }
-              inputBatch(commands);
+              setCheckDatas(commands.split("+"));
+              showCheckData(true);
             }
             catch (e) {
               alert(e);
             }
             finally {
+              listenKeyboard = true;
               setProcessing(false);
             }
           };
@@ -342,6 +345,39 @@ export function Calculator() {
         imageInput.value = '';
         imageInput.click();
 
+        break;
+      }
+      case '☊': {
+        if (speechService.isListening) {
+          speechService.stop();
+          return;
+        }
+
+        speechService.requestPermission().then(async () => {
+          try {
+            const rprom = speechService.recognize();
+            setTimeout(() => {
+              listenKeyboard = false;
+              setListening(true);
+            }, 100);
+            const result = await rprom;
+            if (!result) {
+              return;
+            }
+            console.log(result);
+            const commands = CalcParser(result);
+            console.log(commands);
+            setCheckDatas(commands.split("+"));
+            showCheckData(true);
+          }
+          catch (e) {
+            alert(e);
+          }
+          finally {
+            listenKeyboard = true;
+            setListening(false);
+          }
+        });
         break;
       }
       case " ": {
@@ -1008,42 +1044,6 @@ export function Calculator() {
               fontSize = '1.5rem';
               break;
             }
-            case '☊': {
-              handlers = {
-                onClick: async () => {
-                  if (speechService.isListening) {
-                    speechService.stop();
-                    return;
-                  }
-
-                  try {
-                    await speechService.requestPermission();
-                    const rprom = speechService.recognize();
-                    setTimeout(() => {
-                      listenKeyboard = false;
-                      setListening(true);
-                    }, 100);
-                    const result = await rprom;
-                    if (!result) {
-                      return;
-                    }
-                    console.log(result);
-                    const calcCommand = CalcParser(result);
-                    console.log(calcCommand);
-                    if (input) {
-                      clickRef.current("+");
-                    }
-                    inputBatch(calcCommand);
-                  }
-                  catch { }
-                  finally {
-                    listenKeyboard = true;
-                    setListening(false);
-                  }
-                }
-              }
-              break;
-            }
             case '📷︎': {
               disabled = !isOCRReady;
               break;
@@ -1081,6 +1081,8 @@ export function Calculator() {
         })}
       </div>
 
+      {/* Check Popup */}
+      <CheckPopup isOpen={isCheckData} onCancel={() => showCheckData(false)} onOK={(inputs) => { showCheckData(false); inputBatch(inputs.join('+') + '+') }} datas={checkDatas} />
       {/* Check Popup Area */}
       <BottomPopup isOpen={isCheckView} hideClose={true} contentStyle={{ height: 'calc(100dvh - 6rem)', backgroundColor: '#f0f0f0', padding: '1rem 0' }} onClose={() => { openCheckView(false); }}>
         <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>CHECK</h4>
