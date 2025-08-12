@@ -1,6 +1,6 @@
 import * as CBOR from "cbor-x";
 import dBService, { User } from "./IndexedDBService";
-import { base64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, x509ToCryptoKey } from "../Utility/crypto";
+import { base64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, uint8Array2Base64, x509ToCryptoKey } from "../Utility/crypto";
 
 type AttestationObject = {
     authData: Uint8Array,
@@ -34,7 +34,8 @@ const userIdentity: PublicKeyCredentialUserEntity = {
 let challenge: Uint8Array | undefined = undefined;
 class IdentityService {
     public async getRegisterOption(): Promise<PublicKeyCredentialCreationOptions> {
-        challenge = Uint8Array.from("challenge", c => c.charCodeAt(0));
+        challenge = new Uint8Array(32);
+        crypto.getRandomValues(challenge);
         const option: PublicKeyCredentialCreationOptions = {
             challenge: challenge,
             rp: {
@@ -69,7 +70,7 @@ class IdentityService {
         if (!clientDataObj.origin.startsWith(origin)) {
             throw new Error("mismatch origin");
         }
-        if (!challenge || clientDataObj.challenge != this.Uint8ArrayToBase64(challenge)) {
+        if (!challenge || clientDataObj.challenge != uint8Array2Base64(challenge)) {
             throw new Error("mismatch challenge");
         }
 
@@ -161,8 +162,9 @@ class IdentityService {
         });
     }
     public async getAuthenticationOption(): Promise<PublicKeyCredentialRequestOptions> {
-        challenge = Uint8Array.from('login-challenge', c => c.charCodeAt(0));
-
+        challenge = new Uint8Array(32);
+        crypto.getRandomValues(challenge);
+        
         const userData = await dBService.get("users", userId) as User;
         return {
             challenge: challenge,
@@ -267,25 +269,6 @@ class IdentityService {
             credId,
             publicKey
         };
-    }
-
-    private base64ToUint8Array(base64: string) {
-        // Decode base64 to binary string
-        const binaryString = atob(base64);
-
-        // Create a Uint8Array from the binary string
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        return bytes;
-    }
-    private Uint8ArrayToBase64(data: Uint8Array) {
-        const binary = String.fromCharCode(...data);
-        return btoa(binary);
     }
 }
 

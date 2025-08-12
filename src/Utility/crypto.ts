@@ -298,6 +298,24 @@ export function concat(...buffers: (ArrayBuffer | ArrayBufferView)[]) {
   return result;
 }
 
+export function base642Uint8Array(base64: string) {
+  // Decode base64 to binary string
+  const binaryString = atob(base64);
+
+  // Create a Uint8Array from the binary string
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+
+  for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  return bytes;
+}
+export function uint8Array2Base64(data: Uint8Array) {
+  const binary = String.fromCharCode(...data);
+  return btoa(binary);
+}
 export function coseEcKeyToPem(coseKey: any): string {
   // COSE key params (RFC 8152)
   const y = coseKey[-3]; // y coordinate
