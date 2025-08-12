@@ -1,6 +1,6 @@
 import * as CBOR from "cbor-x";
 import dBService, { User } from "./IndexedDBService";
-import { base64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, uint8Array2Base64, x509ToCryptoKey } from "../Utility/crypto";
+import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, toBase64 } from "../Utility/crypto";
 
 type AttestationObject = {
     authData: Uint8Array,
@@ -70,7 +70,7 @@ class IdentityService {
         if (!clientDataObj.origin.startsWith(origin)) {
             throw new Error("mismatch origin");
         }
-        if (!challenge || clientDataObj.challenge != uint8Array2Base64(challenge)) {
+        if (!challenge || clientDataObj.challenge != toBase64(challenge)) {
             throw new Error("mismatch challenge");
         }
 
@@ -84,76 +84,6 @@ class IdentityService {
         if ((authData.flags & 0x40) === 0) {
             throw new Error("No attested credential data present");
         }
-
-        // TODO: attestation verification.
-        // switch (attestation.fmt) {
-        //     case "none": {
-        //         break;
-        //     }
-        //     case "packed": {
-        //         const clientDataHash = await crypto.subtle.digest("SHA-256", cred.response.clientDataJSON);
-
-        //         // combine data
-        //         const dataToVerify = concat(attestation.authData, clientDataHash);
-
-        //         const coseKey = CBOR.decode(authData.publicKey!) as COSEKey;
-        //         const [publicKey, algo] = await coseToCryptoKey(coseKey);
-        //         const signature = (algo as EcdsaParams).name == "ECDSA" ? der2Raw(attestation.attStmt.sig) : new Uint8Array(attestation.attStmt.sig);
-        //         const isSignatureValid = await crypto.subtle.verify(algo, publicKey, signature, dataToVerify);
-
-        //         if (!isSignatureValid) {
-        //             throw new Error("invalid signature");
-        //         }
-        //         break;
-        //     }
-        //     case "fido-u2f": {
-        //         const clientDataHash = await crypto.subtle.digest("SHA-256", cred.response.clientDataJSON);
-
-        //         const u2fData = concat(new Uint8Array([0x00]), authData.rpIdHash, clientDataHash, authData.credId!, authData.publicKey!);
-
-        //         // DER certificate (ArrayBuffer)
-        //         const certDer = attestation.attStmt.x5c?.[0] as ArrayBuffer;
-        //         const cert = await crypto.subtle.importKey("spki", certDer,
-        //             { name: "ECDSA", namedCurve: "P-256" }
-        //             , false, ["verify"]
-        //         );
-
-        //         const signature = der2Raw(attestation.attStmt.sig as ArrayBuffer);
-        //         const isSignatureValid = await crypto.subtle.verify({ name: "ECDSA", hash: { name: "SHA-256" } }
-        //             , cert, signature, u2fData);
-
-        //         if (!isSignatureValid) {
-        //             throw new Error("invalid signature");
-        //         }
-        //     }
-        //     case "tpm": {
-        //         const stmt = attestation.attStmt as TPMAtestationStatement;
-        //         if (stmt.ver !== '2.0') {
-        //             throw new Error(`Unsupported TPM version: ${stmt.ver}`);
-        //         }
-
-        //         if (!compare(stmt.pubArea, authData.publicKey!)) {
-        //             throw new Error(`invalid public keys`);
-        //         }
-
-        //         const [publicKey, algo] = await x509ToCryptoKey(stmt.x5c![0], stmt.alg);
-        //         const clientDataHash = await crypto.subtle.digest("SHA-256", cred.response.clientDataJSON);
-        //         const dataToVerify = concat(attestation.authData, clientDataHash);
-        //         const signature = (algo as EcdsaParams).name == "ECDSA" ? der2Raw(stmt.sig) : new Uint8Array(stmt.sig);
-        //         const isSignatureValid = await crypto.subtle.verify(algo, publicKey, signature, dataToVerify);
-                
-        //         if (!isSignatureValid) {
-        //             throw new Error("invalid signature");
-        //         }
-        //         break;
-        //     }
-        //     case "apple": {
-        //         break;
-        //     }
-        //     case "android-key": {
-        //         break;
-        //     }
-        // }
 
         await dBService.save("users", {
             id: userId,
@@ -188,7 +118,7 @@ class IdentityService {
         if (!clientDataObj.origin.startsWith(origin)) {
             throw new Error("mismatch origin");
         }
-        if (!challenge || clientDataObj.challenge != base64url(challenge)) {
+        if (!challenge || clientDataObj.challenge != toBase64url(challenge)) {
             throw new Error("mismatch challenge");
         }
 

@@ -31,24 +31,6 @@ const HASH_MAP: { [key: number]: string } = {
   "-258": "SHA-384",  // RS384
   "-259": "SHA-512"   // RS512
 };
-
-// Map COSE algorithm ID → WebCrypto import parameters
-const ALGO_MAP: Record<number, { name: string; hash?: string; namedCurve?: string }> = {
-  // ECDSA
-  [-7]: { name: "ECDSA", namedCurve: "P-256" },
-  [-35]: { name: "ECDSA", namedCurve: "P-384" },
-  [-36]: { name: "ECDSA", namedCurve: "P-521" },
-
-  // RSA
-  [-37]: { name: "RSA-PSS", hash: "SHA-256" },
-  [-38]: { name: "RSA-PSS", hash: "SHA-384" },
-  [-39]: { name: "RSA-PSS", hash: "SHA-512" },
-  [-257]: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-  [-258]: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-384" },
-  [-259]: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-512" },
-  [-65535]: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-1" }, // RS1
-};
-
 export async function coseToCryptoKey(coseKey: COSEKey): Promise<[CryptoKey, AlgorithmIdentifier | RsaPssParams | EcdsaParams]> {
   const kty = coseKey[1];
   const alg = coseKey[3];
@@ -63,8 +45,8 @@ export async function coseToCryptoKey(coseKey: COSEKey): Promise<[CryptoKey, Alg
       const jwk = {
         kty: "EC",
         crv: namedCurve,
-        x: base64url(coseKey[-2]),
-        y: base64url(coseKey[-3]),
+        x: toBase64url(coseKey[-2]),
+        y: toBase64url(coseKey[-3]),
         ext: true,
         key_ops: ["verify"]
       };
@@ -82,8 +64,8 @@ export async function coseToCryptoKey(coseKey: COSEKey): Promise<[CryptoKey, Alg
 
       const jwk = {
         kty: "RSA",
-        n: base64url(coseKey[-1] as ArrayBuffer), // modulus
-        e: base64url(coseKey[-2]), // exponent
+        n: toBase64url(coseKey[-1] as ArrayBuffer), // modulus
+        e: toBase64url(coseKey[-2]), // exponent
         alg: `RS${hash.split("-")[1]}`, // e.g., "RS256"
         ext: true,
         key_ops: ["verify"]
@@ -112,43 +94,6 @@ export async function coseToCryptoKey(coseKey: COSEKey): Promise<[CryptoKey, Alg
   }
 
   throw new Error(`Unsupported key type (kty: ${kty})`);
-}
-export async function x509ToCryptoKey(der: ArrayBuffer | ArrayBufferView, coseAlgo: number): Promise<[CryptoKey, AlgorithmIdentifier | RsaPssParams | EcdsaParams]> {
-  const bytes = toUint8Array(der);
-
-  // Try to find start of SubjectPublicKeyInfo (SPKI)
-  let spkiOffset = 0;
-  for (let i = 0; i < bytes.length - 1; i++) {
-    // Very basic scan for 0x30 0x82 (SEQUENCE with 2-byte length)
-    if (
-      bytes[i] === 0x30 &&
-      bytes[i + 1] === 0x82 &&
-      i + 4 < bytes.length
-    ) {
-      const len = (bytes[i + 2] << 8) | bytes[i + 3];
-      if (i + 4 + len === bytes.length) {
-        spkiOffset = i;
-        break;
-      }
-    }
-  }
-
-  const spkiBytes = bytes.slice(spkiOffset);
-
-  const algo = ALGO_MAP[coseAlgo];
-  if (!algo) throw new Error(`Unsupported COSE algorithm ID: ${coseAlgo}`);
-
-  // Import the key
-  const key = await crypto.subtle.importKey(
-    "spki",
-    spkiBytes.buffer,
-    algo,
-    true,
-    ["verify"]
-  );
-
-  const algoName = { name: algo.name, hash: { name: algo.hash || algo.namedCurve } };
-  return [key, algoName];
 }
 
 function encodeInteger(bytes: Uint8Array): Uint8Array {
@@ -181,15 +126,8 @@ function encodeInteger(bytes: Uint8Array): Uint8Array {
   return out;
 }
 
-export function base64url(buffer: ArrayBuffer | ArrayBufferView) {
-  const view = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-  return btoa(String.fromCharCode(...view))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-export function base64ToBuffer(base64: string) {
-  return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+export function toBase64url(buffer: ArrayBuffer | ArrayBufferView) {
+  return toBase64(buffer).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 export function toUint8Array(buffer: ArrayBuffer | ArrayBufferView) {
   if (buffer instanceof ArrayBuffer) {
@@ -197,7 +135,6 @@ export function toUint8Array(buffer: ArrayBuffer | ArrayBufferView) {
   }
   return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 }
-
 export function der2Raw(der: ArrayBuffer | ArrayBufferView, size = 32): Uint8Array {
   const derView = toUint8Array(der);
   let offset = 0;
@@ -284,7 +221,6 @@ export function compare(buf1: ArrayBuffer | ArrayBufferView, buf2: ArrayBuffer |
 
   return true;
 }
-
 export function concat(...buffers: (ArrayBuffer | ArrayBufferView)[]) {
   const views = buffers.map(o => o instanceof ArrayBuffer ? new Uint8Array(o) : new Uint8Array(o.buffer, o.byteOffset, o.byteLength));
   const result = new Uint8Array(views.map(o => o.length).reduce((a, b) => a + b, 0));
@@ -297,8 +233,7 @@ export function concat(...buffers: (ArrayBuffer | ArrayBufferView)[]) {
 
   return result;
 }
-
-export function base642Uint8Array(base64: string) {
+export function fromBase64(base64: string) {
   // Decode base64 to binary string
   const binaryString = atob(base64);
 
@@ -312,60 +247,8 @@ export function base642Uint8Array(base64: string) {
 
   return bytes;
 }
-export function uint8Array2Base64(data: Uint8Array) {
-  const binary = String.fromCharCode(...data);
+export function toBase64(buffer: ArrayBuffer | ArrayBufferView) {
+  const view = toUint8Array(buffer);
+  const binary = String.fromCharCode(...view);
   return btoa(binary);
-}
-export function coseEcKeyToPem(coseKey: any): string {
-  // COSE key params (RFC 8152)
-  const y = coseKey[-3]; // y coordinate
-  const x = coseKey[-2]; // x coordinate (Buffer or Uint8Array)
-  const crv = coseKey[-1]; // should be 1 for P-256
-  const kty = coseKey[1];  // should be 2 for EC2
-  const alg = coseKey[3];  // typically -7 for ES256
-
-  if (kty !== 2 || crv !== 1) {
-    throw new Error("Only EC2 keys with P-256 curve are supported");
-  }
-
-  // Build uncompressed public key (0x04 || X || Y)
-  const publicKeyBytes = new Uint8Array(1 + x.length + y.length);
-  publicKeyBytes[0] = 0x04;
-  publicKeyBytes.set(x, 1);
-  publicKeyBytes.set(y, 1 + x.length);
-
-  // ASN.1 DER prefix for EC public key (P-256)
-  const asn1Prefix = Uint8Array.from([
-    0x30, 0x59,                                     // SEQUENCE (len=89)
-    0x30, 0x13,                                   // SEQUENCE (len=19)
-    0x06, 0x07, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01, // OID: ecPublicKey
-    0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07, // OID: P-256
-    0x03, 0x42, 0x00 // BIT STRING (len=66, unused bits=0)
-  ]);
-
-  // Combine prefix + public key
-  const der = new Uint8Array(asn1Prefix.length + publicKeyBytes.length);
-  der.set(asn1Prefix, 0);
-  der.set(publicKeyBytes, asn1Prefix.length);
-
-  // Convert to base64
-  const base64 = btoa(String.fromCharCode(...der));
-
-  // Wrap in PEM format
-  const pem = `-----BEGIN PUBLIC KEY-----\n${base64.match(/.{1,64}/g)?.join('\n')}\n-----END PUBLIC KEY-----`;
-  return pem;
-}
-export async function pemToCryptoKey(pem: string): Promise<CryptoKey> {
-  // Remove PEM header/footer
-  const b64 = pem.replace("-----BEGIN PUBLIC KEY-----", "")
-    .replace("-----END PUBLIC KEY-----", "")
-    .replace(/\s/g, "");
-
-  const binaryDer = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  return await crypto.subtle.importKey("spki", binaryDer.buffer,
-    {
-      name: "ECDSA",
-      namedCurve: "P-256",
-    }, true, ["verify"]
-  );
 }
