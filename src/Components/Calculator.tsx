@@ -19,6 +19,7 @@ import BottomPopup from './BottomPopup';
 import { SettingPopup } from './SettingPopup';
 import { USBPrinterService } from '../PrinterService/USBPrinterService';
 import { CheckPopup } from './CheckPopup';
+import AuthenticationService from '../Services/AuthenticationService';
 
 const exps: [string, number][] = [];
 let temp: string = "";
@@ -703,8 +704,20 @@ export function Calculator() {
         break;
       }
       case "⚙": {
-        listenKeyboard = false;
-        openSetting(o => !o);
+        const fn = () => {
+          listenKeyboard = false;
+          openSetting(o => !o);
+        };
+        if (setting.lockSetting) {
+          AuthenticationService.authenticate().then(o => {
+            if (o) {
+              fn();
+            }
+          });
+        }
+        else {
+          fn();
+        }
         break;
       }
       // 0-9

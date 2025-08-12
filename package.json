@@ -21,7 +21,9 @@
   "dependencies": {
     "@gutenye/ocr-browser": "^1.4.8",
     "@types/html2canvas": "^1.0.0",
+    "cbor-x": "^1.6.0",
     "html2canvas": "^1.4.1",
+    "idb": "^8.0.3",
     "onnxruntime-web": "^1.22.0",
     "preact": "^10.26.9"
   }
