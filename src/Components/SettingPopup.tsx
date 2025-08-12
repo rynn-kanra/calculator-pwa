@@ -8,6 +8,8 @@ import SettingService from '../Services/SettingService';
 import BottomPopup from './BottomPopup';
 import './Form.css';
 import TabView, { Tab } from './TabView';
+import IndexedDBService from '../Services/IndexedDBService';
+import AuthenticationService from '../Services/AuthenticationService';
 
 export interface SettingPopupProps {
   isOpen: boolean;
@@ -255,6 +257,31 @@ export function SettingPopup(setting: SettingPopupProps) {
             <input
               type="checkbox"
               checked={data.printOperator} onInput={(e) => { data.printOperator = e.currentTarget.checked; }}
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div>Kunci setting biometrik</div>
+        <div class="input-container">
+          <label class="switch">
+            <input
+              type="checkbox"
+              checked={data.lockSetting} onInput={async (e) => {
+                const el = e.currentTarget;
+                try {
+                  if (el.checked) {
+                    const isRegistered = await AuthenticationService.isRegistered();
+                    if (!isRegistered) {
+                      await AuthenticationService.register();
+                    }
+                  }
+
+                  data.lockSetting = el.checked;
+                }
+                catch {
+                  data.lockSetting = el.checked = !el.checked;
+                }
+              }}
             />
             <span class="slider"></span>
           </label>
