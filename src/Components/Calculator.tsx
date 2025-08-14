@@ -51,6 +51,7 @@ export function Calculator() {
   const [checkIndex, setCheckIndex] = useState(-1);
   const [checkDatas, setCheckDatas] = useState<string[]>([]);
   const [isCheckData, showCheckData] = useState(false);
+  const divRef = useRef<HTMLDivElement>(null);
 
   /*'△','▽','±', ' ', '00', '⚙' */
   const buttons = [
@@ -200,13 +201,22 @@ export function Calculator() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
-
     if ([...buttons, action].indexOf('📷︎') !== -1) {
       ocrService = new GutenyeOCRService();
       checkOCRDepedencies();
     }
     if ([...buttons, action].indexOf('☊') !== -1) {
       speechService = new SpeechService();
+    }
+
+    if (setting.sound) {
+      inAudioCtxRef.current = new AudioContext();
+      fetch('assets/audio/click-in.mp3')
+        .then((res) => res.arrayBuffer())
+        .then((arrayBuffer) => inAudioCtxRef.current!.decodeAudioData(arrayBuffer))
+        .then((decoded) => {
+          inBufferRef.current = decoded;
+        });
     }
 
     if (setting.defaultConfig.autoConnect) {
@@ -264,6 +274,8 @@ export function Calculator() {
     if (action) {
       handleClick(action);
     }
+
+    divRef.current?.focus();
   }, []);
 
 
@@ -342,24 +354,26 @@ export function Calculator() {
     return Number((n + Number.EPSILON).toFixed(15));
   }
   const handleClick = (value: string) => {
-    if (navigator.vibrate) {
+    if (setting.vibrate) {
       try {
-        navigator.vibrate(100); // vibrate for 10 milliseconds
+        navigator.vibrate?.(30); // vibrate for 30 milliseconds
       } catch { }
     }
-    
+
     if (setting.keepScreenAwake !== false) {
       ScreenService.keepScreenAwake();
     }
 
-    // play click sound
-    const ctx = inAudioCtxRef.current;
-    const buffer = inBufferRef.current;
-    if (ctx && buffer) {
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
+    if (setting.sound) {
+      // play click sound
+      const ctx = inAudioCtxRef.current;
+      const buffer = inBufferRef.current;
+      if (ctx && buffer) {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      }
     }
 
     switch (value) {
@@ -891,20 +905,6 @@ export function Calculator() {
     inputBatch(pastedText);
   };
 
-  useEffect(() => {
-    inAudioCtxRef.current = new AudioContext();
-
-    fetch('assets/audio/click-in.mp3')
-      .then((res) => res.arrayBuffer())
-      .then((arrayBuffer) => inAudioCtxRef.current!.decodeAudioData(arrayBuffer))
-      .then((decoded) => {
-        inBufferRef.current = decoded;
-      });
-  }, []);
-  const divRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    divRef.current?.focus();
-  }, []);
   useEffect(() => {
     const container = divRef.current?.querySelector(".result-container") as HTMLElement;
     if (container && container.scrollWidth > container.clientWidth) {
