@@ -234,7 +234,7 @@ export function SettingPopup(setting: SettingPopupProps) {
         <div style={{ gridColumn: 'span 2' }}>
           Nama device
           <div>
-            <input class='form' type='text' name="device-name" value={data.deviceName} onInput={(e) => { data.deviceName = e.currentTarget.value; }} />
+            <input class='form' type='text' name="device-name" placeholder="contoh: DEVICE #001" value={data.deviceName} onInput={(e) => { data.deviceName = e.currentTarget.value; }} />
           </div>
         </div>
         <div>Susanan 0</div>
@@ -283,6 +283,26 @@ export function SettingPopup(setting: SettingPopupProps) {
                   data.lockSetting = el.checked = !el.checked;
                 }
               }}
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div>Suara ketik</div>
+        <div class="input-container">
+          <label class="switch">
+            <input
+              type="checkbox"
+              checked={data.sound} onInput={(e) => { data.sound = e.currentTarget.checked; }}
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div>Bergetaran saat ditekan</div>
+        <div class="input-container">
+          <label class="switch">
+            <input
+              type="checkbox"
+              checked={data.vibrate} onInput={(e) => { data.vibrate = e.currentTarget.checked; }}
             />
             <span class="slider"></span>
           </label>
