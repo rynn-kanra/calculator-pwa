@@ -1,8 +1,8 @@
 {
-  "name": "Printer Calculator Dev",
-  "short_name": "Print Calc Dev",
+  "name": "Printer Calculator",
+  "short_name": "Print Calc",
   "description": "Printer Calculator is a lightweight App that lets you perform calculations and instantly print results using a thermal printer.\n\nThe app is itself a Progressive Web App which means it can be installed to the home screen of your mobile device or to your desktop.",
-  "id": "print-calc-dev",
+  "id": "print-calc",
   "start_url": "/",
   "display": "standalone",
   "display_override": [
