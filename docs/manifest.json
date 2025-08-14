@@ -14,7 +14,7 @@
   "theme_color": "#ffffff",
   "tab_strip": {
     "new_tab_button": {
-      "url": "/"
+      "url": "./"
     }
   },
   "orientation": "portrait",
@@ -81,18 +81,18 @@
     {
       "name": "Scan gambar",
       "short_name": "Scan gambar",
-      "url": "/?action=📷︎",
+      "url": "./?action=📷︎",
       "icons": [{ "src": "./assets/images/camera.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Pengenalan ucapan",
       "short_name": "Pengenalan ucapan",
-      "url": "/?action=☊",
+      "url": "./?action=☊",
       "icons": [{ "src": "./assets/images/comment-dots.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "share_target": {
-    "action": "/share",
+    "action": "./share",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
@@ -119,7 +119,7 @@
   },
   "file_handlers": [
     {
-      "action": "/open-file",
+      "action": "./?open=image",
       "accept": {
         "image/png": [
           ".png"
