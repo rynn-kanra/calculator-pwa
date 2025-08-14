@@ -135,12 +135,77 @@ export function Calculator() {
     return false;
   };
 
+  const processImage = async (file: File) => {
+    try {
+      listenKeyboard = false;
+      setProcessing(true);
+      const text = await ocrService.recognize(file);
+      console.log(text);
+
+      const replaceMap = new Map<RegExp, string>([
+        [/([0-9])[B&](?=[0-9])/g, '$18'],
+        [/([0-9])[Gb](?=[0-9])/g, '$11'],
+        [/([0-9])[iIl](?=[0-9])/g, '$11'],
+        [/([0-9])[q](?=[0-9])/g, '$19'],
+        [/([0-9])[oO](?=[0-9])/g, '$10'],
+        [/([0-9])[S](?=[0-9])/ig, '$15'],
+        [/([0-9])[Zz](?=[0-9])/g, '$12'],
+        [/([0-9])(?=[86]*0[86]*)[860][860][860]$/g, '$1000'],
+        [/([0-9][5])(?=[86]*0[86]*)[860][860]$/g, '$1500']
+      ]);
+      const replaceMap2 = new Map<RegExp, string>([
+        [/([0-9]).?[-]$/g, '$1000'],
+        [/[^0-9.,](?=.*[0-9]$)/g, ''],
+        [/([^50])(?=00$)/g, '$10'],
+      ]);
+      let ds = text.split('\n').map(o => {
+        const ix = o.lastIndexOf(' ');
+        return ix === -1 ? o : o.substring(ix + 1);
+      }).map(o => {
+        for (const d of replaceMap) {
+          o = o.replaceAll(d[0], d[1]);
+        }
+        if (o.length <= 7) {
+          for (const d of replaceMap2) {
+            o = o.replaceAll(d[0], d[1]);
+          }
+        }
+        else if (o.search(/[^0-9. -]/) >= 0) {
+          return "";
+        }
+        return o;
+      });
+
+      if (ds.some(o => o.length > 3)) {
+        ds = ds.map(o => o.length > 3 ? o : "");
+      }
+
+      const d = ds.join(' ');
+
+      console.log(d);
+      const commands = CalcParser(d);
+      console.log(commands);
+      setCheckDatas(commands.split("+"));
+      showCheckData(true);
+    }
+    catch (e) {
+      alert(e);
+    }
+    finally {
+      listenKeyboard = true;
+      setProcessing(false);
+    }
+  }
+
   useEffect(() => {
-    if (buttons.indexOf('📷︎') !== -1) {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+
+    if ([...buttons, action].indexOf('📷︎') !== -1) {
       ocrService = new GutenyeOCRService();
       checkOCRDepedencies();
     }
-    if (buttons.indexOf('☊') !== -1) {
+    if ([...buttons, action].indexOf('☊') !== -1) {
       speechService = new SpeechService();
     }
 
@@ -156,6 +221,12 @@ export function Calculator() {
         }
       })();
     }
+
+    navigator.serviceWorker.ready.then(() => {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ action: 'ready' });
+      }
+    });
     navigator.serviceWorker.addEventListener('message', (ev) => {
       if (ev.data) {
         switch (ev.data.type) {
@@ -171,9 +242,28 @@ export function Calculator() {
             }
             break;
           }
+          case "SHARE": {
+            processImage(ev.data.image as File);
+            break;
+          }
         }
       }
     });
+
+    if (window.launchQueue) {
+      window.launchQueue.setConsumer(async (launchParams) => {
+        if (launchParams.files.length) {
+          for (const handle of launchParams.files) {
+            const file = await handle.getFile();
+            processImage(file);
+          }
+        }
+      });
+    }
+
+    if (action) {
+      handleClick(action);
+    }
   }, []);
 
 
@@ -253,8 +343,11 @@ export function Calculator() {
   }
   const handleClick = (value: string) => {
     if (navigator.vibrate) {
-      navigator.vibrate(100); // vibrate for 10 milliseconds
+      try {
+        navigator.vibrate(100); // vibrate for 10 milliseconds
+      } catch { }
     }
+    
     if (setting.keepScreenAwake !== false) {
       ScreenService.keepScreenAwake();
     }
@@ -281,71 +374,16 @@ export function Calculator() {
           document.body.appendChild(imageInput);
           imageInput.onchange = async () => {
             if (!imageInput!.files) return;
-            try {
-              listenKeyboard = false;
-              setProcessing(true);
-              const text = await ocrService.recognize(imageInput!.files[0]);
-              console.log(text);
 
-              const replaceMap = new Map<RegExp, string>([
-                [/([0-9])[B&](?=[0-9])/g, '$18'],
-                [/([0-9])[Gb](?=[0-9])/g, '$11'],
-                [/([0-9])[iIl](?=[0-9])/g, '$11'],
-                [/([0-9])[q](?=[0-9])/g, '$19'],
-                [/([0-9])[oO](?=[0-9])/g, '$10'],
-                [/([0-9])[S](?=[0-9])/ig, '$15'],
-                [/([0-9])[Zz](?=[0-9])/g, '$12'],
-                [/([0-9])(?=[86]*0[86]*)[860][860][860]$/g, '$1000'],
-                [/([0-9][5])(?=[86]*0[86]*)[860][860]$/g, '$1500']
-              ]);
-              const replaceMap2 = new Map<RegExp, string>([
-                [/([0-9]).?[-]$/g, '$1000'],
-                [/[^0-9.,](?=.*[0-9]$)/g, ''],
-                [/([^50])(?=00$)/g, '$10'],
-              ]);
-              let ds = text.split('\n').map(o => {
-                const ix = o.lastIndexOf(' ');
-                return ix === -1 ? o : o.substring(ix + 1);
-              }).map(o => {
-                for (const d of replaceMap) {
-                  o = o.replaceAll(d[0], d[1]);
-                }
-                if (o.length <= 7) {
-                  for (const d of replaceMap2) {
-                    o = o.replaceAll(d[0], d[1]);
-                  }
-                }
-                else if (o.search(/[^0-9. -]/) >= 0) {
-                  return "";
-                }
-                return o;
-              });
+            const file = imageInput?.files[0];
+            if (!file) return;
 
-              if (ds.some(o => o.length > 3)) {
-                ds = ds.map(o => o.length > 3 ? o : "");
-              }
-
-              const d = ds.join(' ');
-
-              console.log(d);
-              const commands = CalcParser(d);
-              console.log(commands);
-              setCheckDatas(commands.split("+"));
-              showCheckData(true);
-            }
-            catch (e) {
-              alert(e);
-            }
-            finally {
-              listenKeyboard = true;
-              setProcessing(false);
-            }
+            processImage(file);
           };
         }
 
         imageInput.value = '';
         imageInput.click();
-
         break;
       }
       case '☊': {
