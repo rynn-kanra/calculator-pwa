@@ -6,7 +6,7 @@ import DownloadService from '../Services/DownloadService';
 import { IOCRService } from '../Services/OCR/OCRService';
 import SettingService from '../Services/SettingService';
 import BottomPopup from './BottomPopup';
-import './Form.css';
+import '../Styles/Form.css';
 import TabView, { Tab } from './TabView';
 import IndexedDBService from '../Services/IndexedDBService';
 import AuthenticationService from '../Services/AuthenticationService';
@@ -28,7 +28,7 @@ export function SettingPopup(setting: SettingPopupProps) {
   }
 
   const [isONNXReady, setONNXReady] = useState(false);
-  const [data] = useState(settingData);
+  const [data, setData] = useState(settingData);
   const [printerSettings, setPrinterSettings] = useState([] as Tab[]);
   const [printerType, setPrinterType] = useState(data.defaultConfig.printerType);
 
@@ -270,10 +270,11 @@ export function SettingPopup(setting: SettingPopupProps) {
                 const el = e.currentTarget;
                 try {
                   if (el.checked) {
-                    const isRegistered = await AuthenticationService.isRegistered();
+                    let isRegistered = await AuthenticationService.isRegistered();
                     if (!isRegistered) {
-                      await AuthenticationService.register();
+                      isRegistered = await AuthenticationService.register();
                     }
+                    el.checked = isRegistered;
                   }
 
                   data.lockSetting = el.checked;

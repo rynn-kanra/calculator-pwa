@@ -1,7 +1,19 @@
 /// <reference lib="webworker" />
 
 import DownloadService from "./Services/DownloadService";
-import { isDev, CACHE_NAME, FILES_TO_CACHE } from "./Utility/config";
+import { CACHE_NAME, FILES_TO_CACHE } from "./Utility/config";
+
+const shareTargetMessages: any[] = [];
+const clientIds = new Set<string>();
+
+const getClients = async () => {
+    let clients: WindowClient[] = [];
+    if (clientIds.size > 0) {
+        const d = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        clients = d.filter(o => clientIds.has(o.id));
+    }
+    return clients;
+}
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 sw.addEventListener('install', (event: ExtendableEvent) => {
@@ -41,7 +53,36 @@ sw.addEventListener('activate', (event) => {
 });
 
 sw.addEventListener('fetch', (event) => {
-    if (isDev) {
+    const requestUrl = new URL(event.request.url);
+
+    if (requestUrl.pathname === '/share' && event.request.method === 'POST') {
+        event.respondWith((async () => {
+            const formData = await event.request.formData();
+
+            const sharedTitle = formData.get('title');
+            const sharedText = formData.get('text');
+            const sharedUrl = formData.get('url');
+            const sharedImage = formData.get('image') as File;
+
+            let clients = await getClients();
+            const pushData = {
+                type: 'SHARE',
+                title: sharedTitle,
+                text: sharedText,
+                url: sharedUrl,
+                image: sharedImage
+            };
+            if (clients.length <= 0) {
+                shareTargetMessages.push(pushData);
+            }
+            else {
+                for (const client of clients) {
+                    client.postMessage(pushData);
+                }
+            }
+
+            return Response.redirect('/?shared=1', 303);
+        })());
         return;
     }
 
@@ -49,7 +90,6 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
-    const requestUrl = new URL(event.request.url);
     if (requestUrl.origin !== self.origin) {
         return;
     }
@@ -145,7 +185,26 @@ sw.addEventListener('backgroundfetchfail', async (event: BackgroundFetchUpdateUI
     }
 });
 
-const messageAction: { [key in string]: (...params: any[]) => Promise<void> } = {};
+const messageAction: { [key in string]: (...params: any[]) => Promise<void> } = {
+    BackgroundFeth: async (event: ExtendableMessageEvent, id: string, files: string[], options: BackgroundFetchOptions) => {
+        DownloadService.notifHandler(sw, id, files, options);
+    },
+    ready: async (event: ExtendableMessageEvent) => {
+        if (event.source instanceof Client) {
+            clientIds.add(event.source.id);
+        }
+
+        const clients = await getClients();
+        if (shareTargetMessages.length > 0 && clients.length > 0) {
+            const d = shareTargetMessages.splice(0, shareTargetMessages.length);
+            for (const pm of d) {
+                for (const client of clients) {
+                    client.postMessage(pm);
+                }
+            }
+        }
+    }
+};
 sw.addEventListener('message', (event) => {
     if (!event.data?.action) {
         return;
@@ -155,10 +214,6 @@ sw.addEventListener('message', (event) => {
     const params = event.data.params || [];
     const fn = messageAction[action];
     if (fn) {
-        fn.call(null, ...params);
+        fn.call(null, event, ...params);
     }
 });
-
-messageAction["BackgroundFeth"] =  async (id: string, files: string[], options: BackgroundFetchOptions) => {
-    DownloadService.notifHandler(sw, id, files, options);
-};
