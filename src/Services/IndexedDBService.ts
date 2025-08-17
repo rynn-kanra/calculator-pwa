@@ -10,6 +10,10 @@ interface Context extends idb.DBSchema {
         key: string;
         value: User;
     };
+    subscriptions: {
+        key: string;
+        value: PushSubscriptionJSON
+    };
 }
 
 class IndexedDBService {
@@ -28,13 +32,16 @@ class IndexedDBService {
                     db.createObjectStore('users', {
                         keyPath: "id"
                     });
+                    db.createObjectStore('subscriptions', {
+                        keyPath: "endpoint"
+                    });
                 }
             });
         }
 
         return this._db;
     }
-    public async save(table: string, data: any) {
+    public async save<Name extends idb.StoreNames<Context>>(table: string, data: idb.StoreValue<Context, Name>) {
         const db = await this.open();
         const tx = db.transaction(table as any, "readwrite");
         await Promise.all([
@@ -42,15 +49,33 @@ class IndexedDBService {
             tx.done
         ]);
     }
-    public async get(table: string, key: any) {
+    public async get<Name extends idb.StoreNames<Context>>(table: Name, key: idb.StoreKey<Context, Name>) {
         const db = await this.open();
-        const tx = db.transaction(table as any, "readwrite");
+        const tx = db.transaction(table, "readwrite");
         const d = await Promise.all([
             tx.store.get(key),
             tx.done
         ]);
 
         return d[0];
+    }
+    public async getAll<Name extends idb.StoreNames<Context>>(table: Name, count?: number) {
+        const db = await this.open();
+        const tx = db.transaction(table, "readwrite");
+        const d = await Promise.all([
+            tx.store.getAll(null, count),
+            tx.done
+        ]);
+
+        return d[0];
+    }
+    public async delete<Name extends idb.StoreNames<Context>>(table: Name, key: idb.StoreKey<Context, Name>) {
+        const db = await this.open();
+        const tx = db.transaction(table, "readwrite");
+        await Promise.all([
+            tx.store.delete(key),
+            tx.done
+        ]);
     }
 }
 

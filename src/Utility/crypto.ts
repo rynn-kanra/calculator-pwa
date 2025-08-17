@@ -31,6 +31,18 @@ const HASH_MAP: { [key: number]: string } = {
   "-258": "SHA-384",  // RS384
   "-259": "SHA-512"   // RS512
 };
+
+const utf8Encoder = new TextEncoder();
+const utf8Decoder = new TextDecoder('utf-8');
+
+export function fromUtf8(data: ArrayBuffer | ArrayBufferView) {
+  const uint8 = toUint8Array(data);
+  return utf8Decoder.decode(uint8);
+}
+export function toUtf8(str: string) {
+  return utf8Encoder.encode(str);
+}
+
 export async function coseToCryptoKey(coseKey: COSEKey): Promise<[CryptoKey, AlgorithmIdentifier | RsaPssParams | EcdsaParams]> {
   const kty = coseKey[1];
   const alg = coseKey[3];
@@ -45,8 +57,8 @@ export async function coseToCryptoKey(coseKey: COSEKey): Promise<[CryptoKey, Alg
       const jwk = {
         kty: "EC",
         crv: namedCurve,
-        x: toBase64url(coseKey[-2]),
-        y: toBase64url(coseKey[-3]),
+        x: toBase64url(toBase64(coseKey[-2])),
+        y: toBase64url(toBase64(coseKey[-3])),
         ext: true,
         key_ops: ["verify"]
       };
@@ -64,8 +76,8 @@ export async function coseToCryptoKey(coseKey: COSEKey): Promise<[CryptoKey, Alg
 
       const jwk = {
         kty: "RSA",
-        n: toBase64url(coseKey[-1] as ArrayBuffer), // modulus
-        e: toBase64url(coseKey[-2]), // exponent
+        n: toBase64url(toBase64(coseKey[-1] as ArrayBuffer)), // modulus
+        e: toBase64url(toBase64(coseKey[-2])), // exponent
         alg: `RS${hash.split("-")[1]}`, // e.g., "RS256"
         ext: true,
         key_ops: ["verify"]
@@ -126,8 +138,12 @@ function encodeInteger(bytes: Uint8Array): Uint8Array {
   return out;
 }
 
-export function toBase64url(buffer: ArrayBuffer | ArrayBufferView) {
-  return toBase64(buffer).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+export function toBase64url(base64: string) {
+  return base64.replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+}
+export function fromBase64url(base64Url: string) {
+  const padding = '='.repeat((4 - base64Url.length % 4) % 4);
+  return (base64Url + padding).replaceAll("-", "+").replaceAll("_", "/");
 }
 export function toUint8Array(buffer: ArrayBuffer | ArrayBufferView) {
   if (buffer instanceof ArrayBuffer) {
@@ -242,13 +258,146 @@ export function fromBase64(base64: string) {
   const bytes = new Uint8Array(len);
 
   for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+    bytes[i] = binaryString.charCodeAt(i);
   }
 
   return bytes;
 }
 export function toBase64(buffer: ArrayBuffer | ArrayBufferView) {
   const view = toUint8Array(buffer);
-  const binary = String.fromCharCode(...view);
+  let binary = '';
+  for (let i = 0; i < view.length; i++) {
+    binary += String.fromCharCode(view[i]);
+  }
   return btoa(binary);
+}
+
+
+
+export async function VapidPrivate2CryptoKey(privateBase64url: string, publicBase64url: string): Promise<[CryptoKey, AlgorithmIdentifier | RsaPssParams | EcdsaParams]> {
+  const pubBytes = fromBase64(fromBase64url(publicBase64url)); // 65 bytes
+  const x = toBase64url(toBase64(pubBytes.slice(1, 33)));
+  const y = toBase64url(toBase64(pubBytes.slice(33, 65)));
+
+  const jwk: JsonWebKey = {
+    kty: "EC",
+    crv: "P-256",
+    d: privateBase64url,
+    x: x,
+    y: y,
+    ext: true,
+    // key_ops: ["sign"]
+  };
+
+  const key = await crypto.subtle.importKey("jwk", jwk,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true, ["sign"]
+  );
+  const algo = { name: "ECDSA", hash: { name: "SHA-256" } };
+  return [key, algo];
+}
+export async function VapidJWT(endpoint: string, vapidSubject: string, vapidPrivKey: CryptoKey, algo: AlgorithmIdentifier | RsaPssParams | EcdsaParams) {
+  const aud = new URL(endpoint).origin;
+  const iat = Math.floor(Date.now() / 1000);
+  const exp = iat + 12 * 60 * 60; // 12h
+  const header = { typ: 'JWT', alg: 'ES256' }; // kid
+  const payload = { iat, aud, exp, sub: vapidSubject };
+
+  const hB64 = toBase64url(toBase64(toUtf8(JSON.stringify(header))));
+  const pB64 = toBase64url(toBase64(toUtf8(JSON.stringify(payload))));
+  const signingInput = `${hB64}.${pB64}`;
+
+  const signRaw = await crypto.subtle.sign(algo, vapidPrivKey, toUtf8(signingInput));
+  const sigB64 = toBase64url(toBase64(signRaw));
+  return `${signingInput}.${sigB64}`;
+}
+
+// Helper to HKDF-Expand (derive bits then slice length)
+async function hkdfExpand(hkdfKey: CryptoKey, info: Uint8Array, salt: Uint8Array, length: number) {
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'HKDF', hash: 'SHA-256', salt: salt, info },
+    hkdfKey, length * 8
+  );
+  return new Uint8Array(bits);
+}
+/** ---------- Web Push payload encryption (aes128gcm) ---------- */
+// RFC 8291/8188 method for Web Push:
+//   salt: 16 bytes random
+//   server generates ephemeral ECDH key pair (P-256)
+//   sharedSecret = ECDH(serverPriv, clientP256DH)
+//   PRK = HKDF-Extract(authSecret, sharedSecret)
+//   CEK  = HKDF(PRK, info="Content-Encoding: aes128gcm\0P-256\0clientPubKey\0serverPubKey", len=16)
+//   NONCE= HKDF(PRK, info="Content-Encoding: nonce\0P-256\0clientPubKey\0serverPubKey", len=12)
+//   Record = 0x00 || plaintext
+//   Cipher = AES-128-GCM(key=CEK, iv=NONCE, AAD=""), tag appended
+export async function encryptWebPushAES128GCM(message: string, clientP256dhB64u: string, clientAuthB64u: string) {
+  // 1) Generate server ephemeral ECDH key pair
+  const serverEphemeral = await crypto.subtle.generateKey(
+    { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']
+  );
+  const serverPubRaw = new Uint8Array(await crypto.subtle.exportKey("raw", serverEphemeral.publicKey));
+  const serverPubB64u = toBase64url(toBase64(serverPubRaw));
+
+  if (!message) {
+    return {
+      body: new Uint8Array(0),
+      salt: new Uint8Array(0),
+      serverPublicKeyB64u: serverPubB64u
+    }
+  }
+
+  // 2) Import client public key
+  const clientPubRaw = fromBase64(fromBase64url(clientP256dhB64u)); // uncompressed EC point (65 bytes)
+  if (clientPubRaw[0] !== 0x04) throw new Error('Client p256dh must be uncompressed');
+  const clientPubKey = await crypto.subtle.importKey('jwk', {
+    kty: 'EC', crv: 'P-256',
+    x: toBase64url(toBase64(clientPubRaw.slice(1, 33))),
+    y: toBase64url(toBase64(clientPubRaw.slice(33, 65))),
+    ext: true
+  }, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
+
+
+  // 3) ECDH to get shared secret (IKM)
+  const ikmBits = await crypto.subtle.deriveBits(
+    { name: 'ECDH', public: clientPubKey }, serverEphemeral.privateKey, 256
+  );
+  const ikm = await crypto.subtle.importKey('raw', ikmBits, { name: 'HKDF' }, false, ['deriveBits', 'deriveKey']);
+
+  // 4) HKDF-Extract using authSecret as salt to get PRK
+  // WebCrypto HKDF uses ikm as key; salt & info passed in deriveBits.
+  const authSecret = fromBase64(fromBase64url(clientAuthB64u));     // 16 bytes
+  const prkBits = await hkdfExpand(ikm, toUtf8("Content-Encoding: auth\0"), authSecret, 32);
+  const prk = await crypto.subtle.importKey('raw', prkBits, { name: 'HKDF' }, false, ['deriveBits']);
+
+  // 5) Derive CEK (16 bytes) and NONCE (12 bytes)
+  // Build "context": "P-256\0" + len(pubClient)=0x00 0x41 + clientPub + len(pubServer)=0x00 0x41 + serverPub
+  const context = concat(toUtf8('P-256\0'),
+    new Uint8Array([(clientPubRaw.byteLength >> 8) & 0xff, clientPubRaw.byteLength & 0xff]),
+    clientPubRaw,
+    new Uint8Array([(serverPubRaw.byteLength >> 8) & 0xff, serverPubRaw.byteLength & 0xff]),
+    serverPubRaw
+  );
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const infoCEK = concat(toUtf8('Content-Encoding: aesgcm\0'), context);
+  const cek = await hkdfExpand(prk, infoCEK, salt, 16);
+
+  const infoNONCE = concat(toUtf8('Content-Encoding: nonce\0'), context);
+  const nonce = await hkdfExpand(prk, infoNONCE, salt, 12);
+
+  // 6) Build record: 2 byte padLength + 0x00 pad delimiter + plaintext
+  const plaintextUint8 = toUtf8(message);
+  const padSize = 0;
+  const pad = new Uint8Array(padSize);
+  const record = concat(new Uint8Array([(padSize >> 8) & 0xff, padSize & 0xff]), pad, plaintextUint8);
+
+  // 7) Encrypt body with AES-128-GCM
+  const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt']);
+  const encryptedBody = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, record));
+
+  return {
+    body: encryptedBody, // request body
+    salt: toBase64url(toBase64(salt)),  // for 'Encryption' header
+    serverPublicKeyB64u: serverPubB64u  // for 'Crypto-Key' header (dh=)
+  };
 }

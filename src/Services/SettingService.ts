@@ -10,7 +10,6 @@ class LocalStorageService<T extends object> {
         if (d) {
             const dat = JSON.parse(d);
             data = copy(data, dat, true);
-            data.defaultConfig.lineHeight = 1;
         }
         return data;
     }

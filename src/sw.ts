@@ -52,6 +52,10 @@ sw.addEventListener('activate', (event) => {
     sw.clients.claim();
 });
 
+sw.addEventListener('push', (event) => {
+    console.log(event);
+});
+
 sw.addEventListener('fetch', (event) => {
     const requestUrl = new URL(event.request.url);
 

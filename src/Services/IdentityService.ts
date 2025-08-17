@@ -1,6 +1,7 @@
 import * as CBOR from "cbor-x";
 import dBService, { User } from "./IndexedDBService";
-import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array } from "../Utility/crypto";
+import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, toBase64, VapidJWT, VapidPrivate2CryptoKey, encryptWebPushAES128GCM, toUtf8, fromUtf8 } from "../Utility/crypto";
+import { fetchCORS } from "../Utility/fetchCORS";
 
 type AttestationObject = {
     authData: Uint8Array,
@@ -20,18 +21,29 @@ type TPMAtestationStatement = {
     certInfo: Uint8Array;
     pubArea: Uint8Array;
 }
+type PushMessage = {
+    payload?: any;
+    ttl: number;
+    topic?: string;
+    urgency?: 'very-low' | 'low' | 'normal' | 'high';
+    authMode: "vapid" | "webpush";
+}
 
-const utf8Decoder = new TextDecoder('utf-8');
-const utf8Encoder = new TextEncoder();
 const userId = "admin@admin";
 const rpId = window.location.hostname;
 const origin = window.location.origin;
 const userIdentity: PublicKeyCredentialUserEntity = {
-    id: utf8Encoder.encode(userId),
+    id: toUtf8(userId),
     name: "admin",
     displayName: "admin",
 };
 let challenge: Uint8Array | undefined = undefined;
+
+const vapid = {
+    subject: "mailto:rynn-kanra@github.io",
+    public: "BFqeYC55FCtAn_Ymu7R9RiC9Cwn-dcJPFpW0JLhCSbQCnd_mfhwPGs2u7hoafCABdlvvH2oP5Wi9tmF75eRUP74",
+    private: "QwXVug4DMGs06_I9U-A4X_764qNHgT2s7BfuKPwXfEQ"
+};
 class IdentityService {
     public async getRegisterOption(): Promise<PublicKeyCredentialCreationOptions> {
         challenge = new Uint8Array(32);
@@ -61,7 +73,7 @@ class IdentityService {
         return option;
     }
     public async register(cred: PublicKeyCredential): Promise<void> {
-        const decodedClientData = utf8Decoder.decode(cred.response.clientDataJSON);
+        const decodedClientData = fromUtf8(cred.response.clientDataJSON);
         // parse the string as an object
         const clientDataObj = JSON.parse(decodedClientData) as WebAuthnClientData;
         if (clientDataObj.type != "webauthn.create") {
@@ -70,7 +82,7 @@ class IdentityService {
         if (!clientDataObj.origin.startsWith(origin)) {
             throw new Error("mismatch origin");
         }
-        if (!challenge || clientDataObj.challenge != toBase64url(challenge)) {
+        if (!challenge || clientDataObj.challenge != toBase64url(toBase64(challenge))) {
             throw new Error("mismatch challenge");
         }
 
@@ -87,14 +99,14 @@ class IdentityService {
 
         await dBService.save("users", {
             id: userId,
-            credId: authData.credId,
-            publicKey: authData.publicKey
+            credId: authData.credId!,
+            publicKey: authData.publicKey!
         });
     }
     public async getAuthenticationOption(): Promise<PublicKeyCredentialRequestOptions> {
         challenge = new Uint8Array(32);
         crypto.getRandomValues(challenge);
-        
+
         const userData = await dBService.get("users", userId) as User;
         return {
             challenge: challenge,
@@ -109,7 +121,7 @@ class IdentityService {
         };
     }
     public async authenticate(cred: PublicKeyCredential): Promise<void> {
-        const decodedClientData = utf8Decoder.decode(cred.response.clientDataJSON);
+        const decodedClientData = fromUtf8(cred.response.clientDataJSON);
         // parse the string as an object
         const clientDataObj = JSON.parse(decodedClientData) as WebAuthnClientData;
         if (clientDataObj.type != "webauthn.get") {
@@ -118,7 +130,7 @@ class IdentityService {
         if (!clientDataObj.origin.startsWith(origin)) {
             throw new Error("mismatch origin");
         }
-        if (!challenge || clientDataObj.challenge != toBase64url(challenge)) {
+        if (!challenge || clientDataObj.challenge != toBase64url(toBase64(challenge))) {
             throw new Error("mismatch challenge");
         }
 
@@ -127,7 +139,7 @@ class IdentityService {
         }
 
         const authData = this.parseAuthData(cred.response.authenticatorData);
-        const expectedRpIdHash = new Uint8Array(await crypto.subtle.digest("SHA-256", utf8Encoder.encode(rpId)));
+        const expectedRpIdHash = new Uint8Array(await crypto.subtle.digest("SHA-256", toUtf8(rpId)));
         if (!compare(authData.rpIdHash, expectedRpIdHash)) {
             throw new Error("rpIdHash mismatch");
         }
@@ -138,7 +150,7 @@ class IdentityService {
             throw new Error("User not verified");
         }
 
-        const user = cred.response.userHandle ? utf8Decoder.decode(cred.response.userHandle) : userId;
+        const user = cred.response.userHandle ? fromUtf8(cred.response.userHandle) : userId;
         const userData = await dBService.get("users", user) as User;
         const clientDataHash = await crypto.subtle.digest("SHA-256", cred.response.clientDataJSON);
 
@@ -199,6 +211,67 @@ class IdentityService {
             credId,
             publicKey
         };
+    }
+
+    // PUSH API
+    public async getVAPIDPublic() {
+        return vapid.public;
+    }
+    public async subscribe(subscription: PushSubscriptionJSON) {
+        await dBService.save("subscriptions", JSON.parse(JSON.stringify(subscription)));
+    }
+    public async unsubscribe(subscription: PushSubscriptionJSON) {
+        await dBService.delete("subscriptions", subscription.endpoint!);
+    }
+    public async pushMessage(message?: PushMessage) {
+        const subscriptions = await dBService.getAll("subscriptions");
+        const [privateKey, algo] = await VapidPrivate2CryptoKey(vapid.private, vapid.public);
+        const sends: Promise<Response>[] = [];
+        let a = false;
+        for (const subscription of subscriptions) {
+            if (!subscription.endpoint) {
+                continue;
+            }
+
+            sends.push((async () => {
+                const jwt = await VapidJWT(subscription.endpoint!, vapid.subject, privateKey, algo);
+                const { body, salt, serverPublicKeyB64u } = await encryptWebPushAES128GCM(message?.payload, subscription.keys!.p256dh, subscription.keys!.auth);
+
+                const headers: Record<string, string> = {
+                    'Crypto-Key': `dh=${serverPublicKeyB64u}`,
+                    'TTL': (Math.min(message?.ttl || 24 * 60 * 60, 24 * 60 * 60)).toString(),
+                    'Content-Length': body.byteLength.toString(),
+                };
+                if (message?.urgency) {
+                    headers['Urgency'] = message.urgency;
+                }
+                if (message?.topic) {
+                    headers['Urgency'] = message.topic;
+                }
+                switch (message?.authMode) {
+                    case "vapid": {
+                        headers['Authorization'] = `vapid t=${jwt},k=${vapid.public}`;
+                        break;
+                    }
+                    default:
+                    case "webpush": {
+                        headers['Authorization'] = `WebPush ${jwt}`;
+                        headers['Crypto-Key'] = `${headers['Crypto-Key']};p256ecdsa=${vapid.public}`;
+                        break;
+                    }
+                }
+
+                if (body.byteLength > 0) {
+                    headers['Encryption'] = `salt=${salt}`;
+                    headers['Content-Encoding'] = 'aesgcm';
+                    headers['Content-Type'] = 'application/octet-stream';
+                }
+
+                return await fetchCORS(subscription.endpoint!, { method: 'POST', headers, body });
+            })());
+        }
+
+        return await Promise.all(sends);
     }
 }
 
