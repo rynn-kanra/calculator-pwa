@@ -1,6 +1,6 @@
 import * as CBOR from "cbor-x";
 import dBService, { User } from "./IndexedDBService";
-import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, toBase64, VapidJWT, VapidPrivate2CryptoKey, encryptWebPushAES128GCM, toUtf8, fromUtf8 } from "../Utility/crypto";
+import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, toBase64, vapidJWT, vapidPrivate2CryptoKey, encryptWebPush, toUtf8, fromUtf8 } from "../Utility/crypto";
 import { fetchCORS } from "../Utility/fetchCORS";
 
 type AttestationObject = {
@@ -22,11 +22,11 @@ type TPMAtestationStatement = {
     pubArea: Uint8Array;
 }
 type PushMessage = {
-    payload?: any;
-    ttl: number;
+    payload: string;
+    ttl?: number;
     topic?: string;
     urgency?: 'very-low' | 'low' | 'normal' | 'high';
-    authMode: "vapid" | "webpush";
+    authMode?: "vapid" | "webpush";
 }
 
 const userId = "admin@admin";
@@ -225,17 +225,16 @@ class IdentityService {
     }
     public async pushMessage(message?: PushMessage) {
         const subscriptions = await dBService.getAll("subscriptions");
-        const [privateKey, algo] = await VapidPrivate2CryptoKey(vapid.private, vapid.public);
+        const [privateKey, algo] = await vapidPrivate2CryptoKey(vapid.private, vapid.public);
         const sends: Promise<Response>[] = [];
-        let a = false;
         for (const subscription of subscriptions) {
             if (!subscription.endpoint) {
                 continue;
             }
 
             sends.push((async () => {
-                const jwt = await VapidJWT(subscription.endpoint!, vapid.subject, privateKey, algo);
-                const { body, salt, serverPublicKeyB64u } = await encryptWebPushAES128GCM(message?.payload, subscription.keys!.p256dh, subscription.keys!.auth);
+                const jwt = await vapidJWT(subscription.endpoint!, vapid.subject, privateKey, algo);
+                const { body, salt, serverPublicKeyB64u } = await encryptWebPush(subscription.keys!.p256dh, subscription.keys!.auth, message?.payload);
 
                 const headers: Record<string, string> = {
                     'Crypto-Key': `dh=${serverPublicKeyB64u}`,

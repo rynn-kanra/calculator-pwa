@@ -272,31 +272,30 @@ export function toBase64(buffer: ArrayBuffer | ArrayBufferView) {
   return btoa(binary);
 }
 
+export function raw2JWK(publicKey: ArrayBuffer | ArrayBufferView, privateB64u?: string): JsonWebKey {
+  const pubBytes = toUint8Array(publicKey);
+  if (pubBytes[0] !== 0x04) {
+    throw new Error('publicKey must be raw/uncompressed');
+  }
 
-
-export async function VapidPrivate2CryptoKey(privateBase64url: string, publicBase64url: string): Promise<[CryptoKey, AlgorithmIdentifier | RsaPssParams | EcdsaParams]> {
-  const pubBytes = fromBase64(fromBase64url(publicBase64url)); // 65 bytes
-  const x = toBase64url(toBase64(pubBytes.slice(1, 33)));
-  const y = toBase64url(toBase64(pubBytes.slice(33, 65)));
-
-  const jwk: JsonWebKey = {
-    kty: "EC",
-    crv: "P-256",
-    d: privateBase64url,
-    x: x,
-    y: y,
-    ext: true,
-    // key_ops: ["sign"]
+  return {
+    kty: "EC", crv: "P-256",
+    x: toBase64url(toBase64(pubBytes.slice(1, 33))),
+    y: toBase64url(toBase64(pubBytes.slice(33, 65))),
+    d: privateB64u,
+    ext: true
   };
-
-  const key = await crypto.subtle.importKey("jwk", jwk,
-    { name: "ECDSA", namedCurve: "P-256" },
-    true, ["sign"]
+}
+export async function vapidPrivate2CryptoKey(privateB64u: string, publicB64u: string): Promise<[CryptoKey, AlgorithmIdentifier | RsaPssParams | EcdsaParams]> {
+  const pubBytes = fromBase64(fromBase64url(publicB64u)); // 65 bytes
+  const key = await crypto.subtle.importKey("jwk", raw2JWK(pubBytes, privateB64u)
+    , { name: "ECDSA", namedCurve: "P-256" }
+    , true, ["sign"]
   );
   const algo = { name: "ECDSA", hash: { name: "SHA-256" } };
   return [key, algo];
 }
-export async function VapidJWT(endpoint: string, vapidSubject: string, vapidPrivKey: CryptoKey, algo: AlgorithmIdentifier | RsaPssParams | EcdsaParams) {
+export async function vapidJWT(endpoint: string, vapidSubject: string, vapidPrivKey: CryptoKey, algo: AlgorithmIdentifier | RsaPssParams | EcdsaParams) {
   const aud = new URL(endpoint).origin;
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + 12 * 60 * 60; // 12h
@@ -320,6 +319,7 @@ async function hkdfExpand(hkdfKey: CryptoKey, info: Uint8Array, salt: Uint8Array
   );
   return new Uint8Array(bits);
 }
+
 /** ---------- Web Push payload encryption (aes128gcm) ---------- */
 // RFC 8291/8188 method for Web Push:
 //   salt: 16 bytes random
@@ -330,7 +330,7 @@ async function hkdfExpand(hkdfKey: CryptoKey, info: Uint8Array, salt: Uint8Array
 //   NONCE= HKDF(PRK, info="Content-Encoding: nonce\0P-256\0clientPubKey\0serverPubKey", len=12)
 //   Record = 0x00 || plaintext
 //   Cipher = AES-128-GCM(key=CEK, iv=NONCE, AAD=""), tag appended
-export async function encryptWebPushAES128GCM(message: string, clientP256dhB64u: string, clientAuthB64u: string) {
+export async function encryptWebPush(clientP256dhB64u: string, clientAuthB64u: string, message?: string) {
   // 1) Generate server ephemeral ECDH key pair
   const serverEphemeral = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']
@@ -348,14 +348,7 @@ export async function encryptWebPushAES128GCM(message: string, clientP256dhB64u:
 
   // 2) Import client public key
   const clientPubRaw = fromBase64(fromBase64url(clientP256dhB64u)); // uncompressed EC point (65 bytes)
-  if (clientPubRaw[0] !== 0x04) throw new Error('Client p256dh must be uncompressed');
-  const clientPubKey = await crypto.subtle.importKey('jwk', {
-    kty: 'EC', crv: 'P-256',
-    x: toBase64url(toBase64(clientPubRaw.slice(1, 33))),
-    y: toBase64url(toBase64(clientPubRaw.slice(33, 65))),
-    ext: true
-  }, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
-
+  const clientPubKey = await crypto.subtle.importKey('jwk', raw2JWK(clientPubRaw), { name: 'ECDH', namedCurve: 'P-256' }, true, []);
 
   // 3) ECDH to get shared secret (IKM)
   const ikmBits = await crypto.subtle.deriveBits(
