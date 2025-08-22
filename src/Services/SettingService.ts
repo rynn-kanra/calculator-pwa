@@ -2,11 +2,14 @@ import { CalculatorConfig } from "../Model/CalculatorConfig";
 import { copy } from "../Utility/copy";
 
 let isPersisted = false;
-class LocalStorageService<T extends object> {
-    constructor(private _type: new () => T, private _key: string) { }
+export class LocalStorageService<T extends object> {
+    constructor(private _type: new () => T, private _key: string, private _init: boolean = true) { }
     public get() {
         const d = localStorage.getItem(this._key);
-        let data = new this._type();
+        let data: T | undefined = undefined;
+        if (this._init) {
+            data = new this._type();
+        }
         if (d) {
             const dat = JSON.parse(d);
             data = copy(data, dat, true);
@@ -23,7 +26,7 @@ class LocalStorageService<T extends object> {
                     }
                 });
         }
-        
+
         let dataStr = "";
         if (data !== null && data !== undefined) {
             dataStr = JSON.stringify(data);

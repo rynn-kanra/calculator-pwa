@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
+import { AutoUpdateMode, CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
 import { ImageType, PrinterType } from '../Model/PrinterConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
@@ -10,6 +10,7 @@ import '../Styles/Form.css';
 import TabView, { Tab } from './TabView';
 import IndexedDBService from '../Services/IndexedDBService';
 import AuthenticationService from '../Services/AuthenticationService';
+import PushService from '../Services/PushService';
 
 export interface SettingPopupProps {
   isOpen: boolean;
@@ -51,8 +52,8 @@ export function SettingPopup(setting: SettingPopupProps) {
       title: `OCR Models`,
       icons: [
         {
-          sizes: "300x300",
-          src: "./assets/images/icon.png",
+          sizes: "192x192",
+          src: "./assets/images/icon.192.png",
           type: "image/png",
         },
       ],
@@ -64,8 +65,8 @@ export function SettingPopup(setting: SettingPopupProps) {
       title: `ONNX Runtime`,
       icons: [
         {
-          sizes: "300x300",
-          src: "./assets/images/icon.png",
+          sizes: "192x192",
+          src: "./assets/images/icon.192.png",
           type: "image/png",
         },
       ],
@@ -306,6 +307,29 @@ export function SettingPopup(setting: SettingPopupProps) {
             />
             <span class="slider"></span>
           </label>
+        </div>
+        <div>Auto Update</div>
+        <div class="input-container">
+          <select class='form' value={data.align} onInput={async (e) => {
+            try {
+              const newValue = parseInt(e.currentTarget.value);
+              if (newValue === AutoUpdateMode.checkDaily) {
+                const isSuccess = await PushService.subscribe();
+                if (!isSuccess) {
+                  throw new Error("Permssion denied");
+                }
+              }
+              data.autoUpdate = newValue;
+            }
+            catch (er) {
+              alert(er);
+              e.currentTarget.value = data.autoUpdate.toString();
+            }
+          }}>
+            <option value={AutoUpdateMode.silent}>Silent</option>
+            <option value={AutoUpdateMode.checkDaily}>Cek setiap hari</option>
+            <option value={AutoUpdateMode.never}>Tidak pernah</option>
+          </select>
         </div>
         <div style={{
           gridColumn: "span 2"

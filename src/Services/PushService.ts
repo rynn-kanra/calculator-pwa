@@ -4,7 +4,6 @@ import identityService from "./IdentityService";
 class PushService {
     public async subscribe(): Promise<boolean> {
         try {
-            window.a = identityService;
             const sw = await navigator.serviceWorker.getRegistration();
             if (!sw) {
                 throw new Error("No service worker");
@@ -14,9 +13,8 @@ class PushService {
                 userVisibleOnly: true
             });
             if (permission === "prompt") {
-                permission = (await navigator.permissions.query({
-                    name: "push"
-                })).state;
+                const p = await Notification.requestPermission();
+                permission = p as PermissionState;
             }
 
             if (permission === "denied") {

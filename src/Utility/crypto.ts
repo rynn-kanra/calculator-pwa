@@ -145,11 +145,15 @@ export function fromBase64url(base64Url: string) {
   const padding = '='.repeat((4 - base64Url.length % 4) % 4);
   return (base64Url + padding).replaceAll("-", "+").replaceAll("_", "/");
 }
-export function toUint8Array(buffer: ArrayBuffer | ArrayBufferView) {
-  if (buffer instanceof ArrayBuffer) {
-    return new Uint8Array(buffer);
+export function toUint8Array(buffer: ArrayBuffer | ArrayBufferView | ArrayLike<number>) {
+  if (buffer instanceof Uint8Array) {
+    return buffer;
   }
-  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  if (ArrayBuffer.isView(buffer)) {
+    return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  }
+
+  return new Uint8Array(buffer);
 }
 export function der2Raw(der: ArrayBuffer | ArrayBufferView, size = 32): Uint8Array {
   const derView = toUint8Array(der);
@@ -237,10 +241,9 @@ export function compare(buf1: ArrayBuffer | ArrayBufferView, buf2: ArrayBuffer |
 
   return true;
 }
-export function concat(...buffers: (ArrayBuffer | ArrayBufferView)[]) {
-  const views = buffers.map(o => o instanceof ArrayBuffer ? new Uint8Array(o) : new Uint8Array(o.buffer, o.byteOffset, o.byteLength));
+export function concat(...buffers: (ArrayBuffer | ArrayBufferView | ArrayLike<number>)[]) {
+  const views = buffers.map(o => o instanceof ArrayBuffer || ArrayBuffer.isView(o) ? toUint8Array(o) : o);
   const result = new Uint8Array(views.map(o => o.length).reduce((a, b) => a + b, 0));
-
   let offset = 0;
   for (const view of views) {
     result.set(view, offset);

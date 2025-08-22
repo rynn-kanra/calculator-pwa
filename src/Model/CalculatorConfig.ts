@@ -7,6 +7,11 @@ export enum Layout0 {
   mode2 = "0|00|.",
   mode3 = "0|00|000"
 }
+export enum AutoUpdateMode {
+  silent,
+  checkDaily,
+  never
+}
 
 export class CalculatorConfig {
   public maxDecimal: number = 8;
@@ -19,6 +24,7 @@ export class CalculatorConfig {
   public vibrate: boolean = true;
   public sound: boolean = true;
   public layout0: Layout0 = Layout0.mode1;
+  public autoUpdate: AutoUpdateMode = AutoUpdateMode.silent;
   public defaultConfig: PrinterConfig = new PrinterConfig();
   public printerConfig: { [key: string]: PrinterConfig } = {};
 
