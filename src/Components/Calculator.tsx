@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { Layout0 } from '../Model/CalculatorConfig';
+import { CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
 import { PrinterConfig, PrinterType } from '../Model/PrinterConfig';
 import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterService';
 import { IminPrinterService } from '../PrinterService/IminPrinterService';
@@ -10,7 +10,6 @@ import { CalcParser } from '../Services/MathLanguageParser';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { IOCRService } from '../Services/OCR/OCRService';
 import ScreenService from '../Services/ScreenService';
-import SettingService from '../Services/SettingService';
 import { SpeechService } from '../Services/SpeechService';
 import '../styles/button.css';
 import { DeepPartial } from '../Utility/DeepPartial';
@@ -20,6 +19,8 @@ import { SettingPopup } from './SettingPopup';
 import { USBPrinterService } from '../PrinterService/USBPrinterService';
 import { CheckPopup } from './CheckPopup';
 import AuthenticationService from '../Services/AuthenticationService';
+import LocalDBService from '../Services/LocalDBService';
+import { LocalStorageService } from '../Services/LocalStorageService';
 
 const exps: [string, number][] = [];
 let temp: string = "";
@@ -27,7 +28,15 @@ let tempDisplay: string = "";
 let input: string = "";
 
 let listenKeyboard = true;
-let setting = SettingService.get();
+
+const settingService = new LocalStorageService(CalculatorConfig, "setting");
+const oldsetting = settingService.get();
+if (oldsetting) {
+  await LocalDBService.set("setting", oldsetting);
+  settingService.delete();
+}
+
+let setting = await LocalDBService.get("setting");
 let ocrService: IOCRService;
 let imageInput: HTMLInputElement | undefined;
 let speechService: SpeechService;

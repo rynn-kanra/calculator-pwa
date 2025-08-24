@@ -1,20 +1,15 @@
 /// <reference lib="webworker" />
 
-import { AutoUpdateMode } from "./Model/CalculatorConfig";
+import { AutoUpdateMode, CalculatorConfig } from "./Model/CalculatorConfig";
 import DownloadService from "./Services/DownloadService";
 import IdentityService from "./Services/IdentityService";
-import SettingService, { LocalStorageService } from "./Services/SettingService";
+import LocalDBService, { VersionData } from "./Services/LocalDBService";
 import { CACHE_NAME } from "./Utility/config";
 
 type MessageAction = {
     action: string,
     params?: any[]
 }
-class VersionData {
-    version!: string;
-    app_files!: string[];
-    assets!: string[];
-};
 
 const shareTargetMessages: any[] = [];
 const clientIds = new Set<string>();
@@ -33,29 +28,28 @@ const getLatestVersion = async () => {
     return await versionResponse.json() as VersionData;
 }
 
-const installVersion = async (version: VersionData) => {
+const installVersion = async (version: VersionData, isFull: boolean = false) => {
     const cache = await caches.open(CACHE_NAME);
-    const files = version.app_files.concat(version.assets);
-    await Promise.all(
-        files.map(file => (async () => {
-            const cached = await cache.match(file);
-            if (!cached) {
-                const response = await fetch(file);
-                if (response.ok && !response.redirected) {
-                    await cache.put(file, response.clone());
-                }
-            }
-        })())
-    );
-    versionService.set(version);
+    let fetchFiles = version.app_files.map(file => (async () => {
+        const response = await fetch(file, { cache: "no-cache" });
+        if (response.ok && !response.redirected) {
+            await cache.put(file, response.clone());
+        }
+    })());
+    fetchFiles.splice(fetchFiles.length, 0, ...version.assets.map(file => (async () => {
+        const response = await fetch(file, { cache: isFull ? "no-cache" : "default" });
+        if (response.ok && !response.redirected) {
+            await cache.put(file, response.clone());
+        }
+    })()));
+    await Promise.all(fetchFiles);
+    await LocalDBService.set("version", version);
 }
-const versionService = new LocalStorageService(VersionData, "version", false);
-const lastCheckService = new LocalStorageService(Date, "lastCheck", false);
-const setting = SettingService.get()!;
 
-const checkUpdate = () => {
+const checkUpdate = async () => {
+    const setting = await LocalDBService.get("setting");
     if (setting.autoUpdate == AutoUpdateMode.checkDaily) {
-        let lastCheck = lastCheckService.get();
+        let lastCheck = await LocalDBService.get("lastCheck");
         if (!lastCheck || (lastCheck.getTime() + 24 * 60 * 60 * 1000) < Date.now()) {
             IdentityService.pushMessage({
                 payload: JSON.stringify({
@@ -63,10 +57,10 @@ const checkUpdate = () => {
                 })
             });
             lastCheck = new Date();
-            lastCheckService.set(lastCheck);
+            await LocalDBService.set("lastCheck", lastCheck);
         }
 
-        setTimeout(checkUpdate, Date.now() - (lastCheck.getTime() + 24 * 60 * 60 * 1000));
+        setTimeout(checkUpdate, (lastCheck.getTime() + 24 * 60 * 60 * 1000) - Date.now());
     }
 };
 checkUpdate();
@@ -90,12 +84,12 @@ const actionHandlers: { [key in string]: (...params: any[]) => Promise<void> } =
             }
         }
     },
-    "UPDATE:CHECK": async () => {
-        const currentVersion = versionService.get();
+    "UPDATE:CHECK": async (showNoUpdate: boolean = false) => {
+        const currentVersion = await LocalDBService.get("version");
         const latestVersion = await getLatestVersion();
         if (currentVersion?.version != latestVersion.version) {
             await sw.registration.showNotification("Versi baru tersedia", {
-                body: `versi: ${latestVersion.version}`,
+                body: `Printer Calculator: versi ${latestVersion.version}`,
                 icon: "./assets/images/icon.192.png",
                 requireInteraction: true,
                 data: {
@@ -113,13 +107,25 @@ const actionHandlers: { [key in string]: (...params: any[]) => Promise<void> } =
                 tag: undefined
             });
         }
+        else if (showNoUpdate) {
+            await sw.registration.showNotification("Belum ada versi baru", {
+                body: `Printer Calculator: versi ${currentVersion.version}`,
+                icon: "./assets/images/icon.192.png",
+                requireInteraction: false,
+                dir: "ltr",
+                lang: "id-ID",
+                silent: false,
+                badge: undefined,
+                tag: undefined
+            });
+        }
     },
     "UPDATE:INSTALL": async (action, version: VersionData) => {
         if (action == "cancel") {
             return;
         }
 
-        await installVersion(version);
+        await installVersion(version, true);
     }
 };
 const executeAction = async (msgAction: MessageAction) => {
@@ -212,13 +218,10 @@ sw.addEventListener('fetch', (event) => {
     // always use cache for other files
     event.respondWith(
         caches.match(event.request).then(async cachedResponse => {
-            if (cachedResponse) {
-                return cachedResponse;
-            }
-
             let freshResponse: Promise<Response> | undefined = undefined;
-            const version = versionService.get()!;
-            const silentUpdate = setting.autoUpdate == AutoUpdateMode.silent && version.app_files.some(o => requestUrl.pathname?.toLowerCase() == new URL(o).pathname?.toLowerCase());
+            const version = await LocalDBService.get("version");
+            const setting = await LocalDBService.get("setting");
+            const silentUpdate = setting.autoUpdate == AutoUpdateMode.silent && version.app_files.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase());
             if (silentUpdate || !cachedResponse) {
                 // Otherwise fetch from network
                 const controller = new AbortController();
@@ -293,6 +296,9 @@ sw.addEventListener('notificationclick', (event) => {
     event.notification.close(); // Close the notification
 
     const msgAction = event.notification.data as MessageAction;
+    if (!msgAction) {
+        return;
+    }
     msgAction.params = (msgAction.params || []);
     msgAction.params.unshift(event.action ?? "");
     executeAction(msgAction);

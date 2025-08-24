@@ -22,7 +22,6 @@ export abstract class OCRServiceBase implements IOCRService {
 
         return new Promise<string>((resolve, reject) => {
             this._input!.onchange = async () => {
-                debugger;
                 if (!this._input?.files) return;
                 const text = await this.recognize(this._input.files[0]);
                 resolve(text);

@@ -1,5 +1,5 @@
 import * as CBOR from "cbor-x";
-import dBService, { User } from "./IndexedDBService";
+import dBService, { User } from "./ServerDBService";
 import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint8Array, toBase64, vapidJWT, vapidPrivate2CryptoKey, encryptWebPush, toUtf8, fromUtf8 } from "../Utility/crypto";
 import { fetchCORS } from "../Utility/fetchCORS";
 
@@ -30,8 +30,8 @@ type PushMessage = {
 }
 
 const userId = "admin@admin";
-const rpId = window.location.hostname;
-const origin = window.location.origin;
+const rpId = globalThis.location.hostname;
+const origin = globalThis.location.origin;
 const userIdentity: PublicKeyCredentialUserEntity = {
     id: toUtf8(userId),
     name: "admin",
@@ -97,7 +97,7 @@ class IdentityService {
             throw new Error("No attested credential data present");
         }
 
-        await dBService.save("users", {
+        await dBService.set("users", {
             id: userId,
             credId: authData.credId!,
             publicKey: authData.publicKey!
@@ -218,7 +218,7 @@ class IdentityService {
         return vapid.public;
     }
     public async subscribe(subscription: PushSubscriptionJSON) {
-        await dBService.save("subscriptions", JSON.parse(JSON.stringify(subscription)));
+        await dBService.set("subscriptions", JSON.parse(JSON.stringify(subscription)));
     }
     public async unsubscribe(subscription: PushSubscriptionJSON) {
         await dBService.delete("subscriptions", subscription.endpoint!);

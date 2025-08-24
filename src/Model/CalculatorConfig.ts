@@ -34,10 +34,15 @@ export class CalculatorConfig {
     }
 
     const id = printer.device?.id;
-    if (id && !this.printerConfig[id]) {
-      const pConfig = copy(new PrinterConfig(), this.defaultConfig, true);
-      pConfig.name = printer.device.name ?? `PRINTER ${this.defaultConfig.printerType}`.toUpperCase();
-      this.printerConfig[id] = pConfig;
+    if (id) {
+      let pConfig = this.printerConfig[id];
+      if (!((pConfig as any) instanceof PrinterConfig)) {
+        pConfig = copy(new PrinterConfig(), pConfig ?? this.defaultConfig, true);
+        if (!pConfig.name) {
+          pConfig.name = printer.device.name ?? `PRINTER ${this.defaultConfig.printerType}`.toUpperCase();
+        }
+        this.printerConfig[id] = pConfig;
+      }
     }
 
     printer.option = this.printerConfig[id] ?? this.defaultConfig;

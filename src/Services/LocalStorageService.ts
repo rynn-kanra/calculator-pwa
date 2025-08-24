@@ -1,11 +1,10 @@
-import { CalculatorConfig } from "../Model/CalculatorConfig";
 import { copy } from "../Utility/copy";
 
 let isPersisted = false;
 export class LocalStorageService<T extends object> {
-    constructor(private _type: new () => T, private _key: string, private _init: boolean = true) { }
+    constructor(private _type: new () => T, private _key: string, private _init: boolean = false) { }
     public get() {
-        const d = localStorage.getItem(this._key);
+        const d = localStorage?.getItem(this._key);
         let data: T | undefined = undefined;
         if (this._init) {
             data = new this._type();
@@ -32,12 +31,9 @@ export class LocalStorageService<T extends object> {
             dataStr = JSON.stringify(data);
         }
 
-        localStorage.setItem(this._key, dataStr);
+        localStorage?.setItem(this._key, dataStr);
     }
     public delete() {
-        localStorage.removeItem(this._key);
+        localStorage?.removeItem(this._key);
     }
 }
-
-const SettingService = new LocalStorageService<CalculatorConfig>(CalculatorConfig, "setting");
-export default SettingService;
