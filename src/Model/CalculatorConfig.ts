@@ -10,7 +10,8 @@ export enum Layout0 {
 export enum AutoUpdateMode {
   silent,
   checkDaily,
-  never
+  never,
+  alwaysOnline
 }
 
 export class CalculatorConfig {
