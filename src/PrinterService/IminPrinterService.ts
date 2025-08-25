@@ -194,7 +194,6 @@ export class IminPrinterService extends PrinterServiceBase<() => void> {
     public openCashdrawer(): void {
         this._instance?.openCashBox();
     }
-    public printQR(): void { }
     public printBarcode(): void { }
     public pause(): void { }
 }
