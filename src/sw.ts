@@ -217,16 +217,9 @@ sw.addEventListener('fetch', (event) => {
 
     // always use cache for other files
     event.respondWith(
-        caches.match(event.request).then(async cachedResponse => {
-            let freshResponse: Promise<Response> | undefined = undefined;
-            const version = await LocalDBService.get("version");
-            const setting = await LocalDBService.get("setting");
-            const silentUpdate = setting.autoUpdate == AutoUpdateMode.silent && version.app_files.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase());
-            if (silentUpdate || !cachedResponse) {
-                // Otherwise fetch from network
-                const controller = new AbortController();
-                const t = setTimeout(() => controller.abort(), 5000);
-                freshResponse = fetch(event.request, { cache: "no-cache", signal: controller.signal }).then(response => {
+        LocalDBService.get("setting").then(setting => {
+            if (setting.autoUpdate == AutoUpdateMode.alwaysOnline) {
+                return fetch(event.request, { cache: "no-cache" }).then(response => {
                     if (response.type == "basic") {
                         if (response.status == 200) {
                             // update cache with latest version
@@ -236,16 +229,41 @@ sw.addEventListener('fetch', (event) => {
                     }
 
                     return response;
-                }).finally(() => {
-                    clearTimeout(t);
                 });
             }
 
-            if (!cachedResponse) {
-                cachedResponse = await freshResponse!;
-            }
+            return caches.match(event.request).then(async cachedResponse => {
+                let freshResponse: Promise<Response> | undefined = undefined;
+                let requireFetch = !cachedResponse;
+                if (!requireFetch && setting.autoUpdate == AutoUpdateMode.silent) {
+                    const version = await LocalDBService.get("version");
+                    requireFetch = version.app_files.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase());
+                }
+                if (requireFetch) {
+                    // Otherwise fetch from network
+                    const controller = new AbortController();
+                    const t = setTimeout(() => controller.abort(), 5000);
+                    freshResponse = fetch(event.request, { cache: "no-cache", signal: controller.signal }).then(response => {
+                        if (response.type == "basic") {
+                            if (response.status == 200) {
+                                // update cache with latest version
+                                const reponseClone = response.clone();
+                                caches.open(CACHE_NAME).then(cache => cache.put(event.request, reponseClone));
+                            }
+                        }
 
-            return cachedResponse;
+                        return response;
+                    }).finally(() => {
+                        clearTimeout(t);
+                    });
+                }
+
+                if (!cachedResponse) {
+                    cachedResponse = await freshResponse!;
+                }
+
+                return cachedResponse;
+            })
         })
     );
 });
