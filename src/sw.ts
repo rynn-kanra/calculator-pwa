@@ -73,7 +73,8 @@ const actionHandlers: { [key in string]: (...params: any[]) => Promise<void> } =
         if (event.source instanceof Client) {
             clientIds.add(event.source.id);
         }
-
+    },
+    handleShare: async (event: ExtendableMessageEvent) => {
         const clients = await getClients();
         if (shareTargetMessages.length > 0 && clients.length > 0) {
             const d = shareTargetMessages.splice(0, shareTargetMessages.length);
@@ -176,7 +177,7 @@ sw.addEventListener('push', (event) => {
 sw.addEventListener('fetch', (event) => {
     const requestUrl = new URL(event.request.url);
 
-    if (requestUrl.pathname === '/share' && event.request.method === 'POST') {
+    if (requestUrl.pathname === '/' && event.request.method === 'POST') {
         event.respondWith((async () => {
             const formData = await event.request.formData();
 
@@ -202,7 +203,7 @@ sw.addEventListener('fetch', (event) => {
                 }
             }
 
-            return Response.redirect('/?shared=1', 303);
+            return Response.redirect('./#/ocr?share=image', 303);
         })());
         return;
     }
@@ -237,7 +238,7 @@ sw.addEventListener('fetch', (event) => {
                 let requireFetch = !cachedResponse;
                 if (!requireFetch && setting.autoUpdate == AutoUpdateMode.silent) {
                     const version = await LocalDBService.get("version");
-                    requireFetch = version.app_files.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase());
+                    requireFetch = version?.app_files?.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase());
                 }
                 if (requireFetch) {
                     // Otherwise fetch from network
@@ -287,7 +288,7 @@ sw.addEventListener('backgroundfetchsuccess', (event: BackgroundFetchUpdateUIEve
 
         const clients = await sw.clients.matchAll();
         for (const client of clients) {
-            client.postMessage({ type: 'DOWNLOAD', status: true, id: event.registration.id });
+            client.postMessage({ action: 'DOWNLOAD', status: true, id: event.registration.id });
         }
     })());
 });
@@ -296,7 +297,7 @@ sw.addEventListener('backgroundfetchfail', async (event: BackgroundFetchUpdateUI
 
     const clients = await sw.clients.matchAll();
     for (const client of clients) {
-        client.postMessage({ type: 'DOWNLOAD', status: false, id: event.registration.id });
+        client.postMessage({ action: 'DOWNLOAD', status: false, id: event.registration.id });
     }
 });
 

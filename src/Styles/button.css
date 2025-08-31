@@ -42,4 +42,5 @@ body {
     overflow: hidden;
     overscroll-behavior-y: contain;
     overscroll-behavior: none;
+    font-family: sans-serif;
 }

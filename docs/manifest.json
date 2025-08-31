@@ -82,7 +82,7 @@
     {
       "name": "Scan gambar",
       "short_name": "Scan gambar",
-      "url": "./?action=📷︎",
+      "url": "./#/ocr",
       "icons": [{ "src": "./assets/images/camera.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
@@ -93,7 +93,7 @@
     }
   ],
   "share_target": {
-    "action": "./?share=image",
+    "action": "./",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
@@ -120,7 +120,7 @@
   },
   "file_handlers": [
     {
-      "action": "./?open=image",
+      "action": "./#/ocr?open=image",
       "accept": {
         "image/png": [
           ".png"

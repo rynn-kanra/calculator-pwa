@@ -1,6 +1,5 @@
 import { FunctionalComponent } from 'preact';
 import { JSXInternal } from 'preact/src/jsx';
-import './BottomPopup.css';
 
 export interface BottomPopupProps {
   isOpen: boolean;

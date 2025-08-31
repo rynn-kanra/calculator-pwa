@@ -3,29 +3,22 @@ import { AutoUpdateMode, CalculatorConfig, Layout0 } from '../Model/CalculatorCo
 import { ImagePrintMode, PrinterType } from '../Model/PrinterConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
-import { IOCRService } from '../Services/OCR/OCRService';
-import BottomPopup from './BottomPopup';
-import '../Styles/Form.css';
+import { IOCRService, OCRServiceBase } from '../Services/OCR/OCRService';
 import TabView, { Tab } from './TabView';
 import AuthenticationService from '../Services/AuthenticationService';
 import PushService from '../Services/PushService';
-import LocalDBService from '../Services/LocalDBService';
+import { useSetting } from './SettingContext';
+import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
+import { route } from 'preact-router';
 
-export interface SettingPopupProps {
-  isOpen: boolean;
-  onClose: (setting: CalculatorConfig) => void;
-  setting?: CalculatorConfig;
-  printerId?: string;
-  ocr: IOCRService;
-  isOCRReady: boolean;
-}
-
+let ocrService: OCRServiceBase;
 const onnx_depedencies = ["./workers/ort-wasm-simd-threaded.jsep.wasm"];
-export function SettingPopup(setting: SettingPopupProps) {
-  let settingData = setting.setting!;
+export default function Setting() {
+  const [setting, setSetting] = useSetting();
 
-  const [isONNXReady, setONNXReady] = useState(false);
-  const [data, setData] = useState(settingData ?? {});
+  const [isOCRReady, setOCRReady] = useState(true);
+  const [isONNXReady, setONNXReady] = useState(true);
+  const [data, setData] = useState(structuredClone(setting));
   const [printerSettings, setPrinterSettings] = useState([] as Tab[]);
   const [printerType, setPrinterType] = useState(data?.defaultConfig?.printerType);
 
@@ -36,24 +29,28 @@ export function SettingPopup(setting: SettingPopupProps) {
       .then(o => {
         setONNXReady(o);
       });
-
-    if (!settingData) {
-      LocalDBService.get("setting").then(o => {
-        if (o) {
-          setData(o);
-          setPrinterType(o.defaultConfig.printerType);
-        }
-      });
+    if (!ocrService) {
+      ocrService = new GutenyeOCRService();
     }
+    
+    Promise.all(
+      ocrService.depedencies.map(o => caches.match(o))
+    ).then(os => os.every(p => !!p))
+      .then(o => {
+        setOCRReady(o);
+      });
   }, []);
 
-  const onClose = () => {
-    LocalDBService.set("setting", data);
-    setting.onClose && setting.onClose(data);
+  const onCancel = () => {
+    route("/");
+  };
+  const onSave = () => {
+    setSetting(data);
+    route("/");
   };
 
   const downloadOCR = () => {
-    DownloadService.download("ocr", setting.ocr.depedencies, {
+    DownloadService.download("ocr", ocrService.depedencies, {
       title: `OCR Models`,
       icons: [
         {
@@ -123,7 +120,9 @@ export function SettingPopup(setting: SettingPopupProps) {
                 {Object.entries(PrinterType).map(([name, value]) => (<option value={value}>{name.replaceAll('_', ' ')}</option>))}
               </select>
             </div>
-            <div>Auto konek</div>
+            <div>Auto konek
+              {o.printerType === PrinterType.Bluetooth && (<div style={{ color: "#888", fontSize: "0.8em" }}>(chrome://flags/#enable-web-bluetooth-new-permissions-backend)</div>)}
+            </div>
             <div class="input-container">
               <label class="switch">
                 <input
@@ -226,9 +225,17 @@ export function SettingPopup(setting: SettingPopupProps) {
     setPrinterSettings(printerSettings);
   }, [data, printerType]);
 
-  return (<BottomPopup isOpen={setting.isOpen} onClose={onClose} contentStyle={{ height: '100dvh', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0' }}>
-    <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>SETTING</h4>
-    <div style={{ overflow: 'auto', height: 'calc(100% - 2rem)', padding: '0 1rem', boxSizing: 'border-box' }}>
+  return (<div style={{ height: '100dvh', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0 0', boxSizing: "border-box" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: "1rem", margin: "0 1rem 1rem 1rem" }}>
+      <div>
+        <button class="btn-small" style={{ color: "slategrey", margin: 0 }} onClick={onCancel}>CANCEL</button>
+      </div>
+      <h4 style={{ textAlign: 'center', margin: '0' }}>SETTING</h4>
+      <div>
+        <button class="btn-small" style={{ color: "white", backgroundColor: "#4caf50", borderColor: "#4caf50", margin: 0 }} onClick={onSave}>SAVE</button>
+      </div>
+    </div>
+    <div style={{ overflow: 'auto', height: 'calc(100% - 2rem)', padding: '0 1rem 1rem 1rem', boxSizing: 'border-box' }}>
       <div
         style={{
           flex: 1,
@@ -355,10 +362,10 @@ export function SettingPopup(setting: SettingPopupProps) {
         }}>
           <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>DOWNLOAD</h4>
           <button class="btn" onClick={() => navigator.serviceWorker.controller?.postMessage({ action: "UPDATE:CHECK", params: [true] })}>Check Update</button>
-          <button class="btn" onClick={downloadONNX} disabled={(isONNXReady === true)}>Download ONNX Runtime</button>
-          <button class="btn" onClick={downloadOCR} disabled={(setting.isOCRReady === true)}>Download OCR Dependencies</button>
+          {!isONNXReady && (<button class="btn" onClick={downloadONNX}>Download ONNX Runtime</button>)}
+          {!isOCRReady && (<button class="btn" onClick={downloadOCR}>Download OCR Dependencies</button>)}
         </div>
       </div>
     </div>
-  </BottomPopup>);
+  </div>);
 }
