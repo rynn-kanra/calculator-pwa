@@ -122,11 +122,11 @@ export class BluetoothPrinterService extends ESCPrinterService {
     declare public device?: BluetoothDevice | undefined;
     declare public option: PrinterConfig;
     public async execute(command: Uint8Array): Promise<void> {
-        const chunkSize = this.option.bluetoothOption.mtu;
+        const chunkSize = this.option.bluetoothOption!.mtu;
         if (command.length <= chunkSize) {
             await this._connection?.writeValue(command);
-            if (this.option.bluetoothOption.delayTime) {
-                await new Promise(resolve => setTimeout(resolve, this.option.bluetoothOption.delayTime));
+            if (this.option.bluetoothOption?.delayTime) {
+                await new Promise(resolve => setTimeout(resolve, this.option.bluetoothOption!.delayTime));
             }
             return;
         }
@@ -135,8 +135,8 @@ export class BluetoothPrinterService extends ESCPrinterService {
         do {
             const chunk = command.slice(offset, offset + chunkSize);
             await this._connection?.writeValue(chunk);
-            if (this.option.bluetoothOption.delayTime) {
-                await new Promise(resolve => setTimeout(resolve, this.option.bluetoothOption.delayTime));
+            if (this.option.bluetoothOption?.delayTime) {
+                await new Promise(resolve => setTimeout(resolve, this.option.bluetoothOption!.delayTime));
             }
 
             offset += chunkSize;

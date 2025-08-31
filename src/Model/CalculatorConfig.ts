@@ -39,7 +39,7 @@ export class CalculatorConfig {
       let pConfig = this.printerConfig[id];
       if (!((pConfig as any) instanceof PrinterConfig)) {
         pConfig = copy(new PrinterConfig(), pConfig ?? this.defaultConfig, true);
-        if (!pConfig.name) {
+        if (!pConfig.name || pConfig.name == "DEFAULT") {
           pConfig.name = printer.device.name ?? `PRINTER ${this.defaultConfig.printerType}`.toUpperCase();
         }
         this.printerConfig[id] = pConfig;
