@@ -1,0 +1,2 @@
+import{s as r}from"./index-y3wskw8n.js";class a{async register(){try{let e=await r.getRegisterOption(),t=await navigator.credentials.create({publicKey:e});return await r.register(t),!0}catch(e){return!1}}async authenticate(){try{let e=await r.getAuthenticationOption(),t=await navigator.credentials.get({publicKey:e,mediation:"optional"});return await r.authenticate(t),!0}catch(e){return!1}}async isRegistered(){try{return!!(await r.getUser())?.id}catch(e){return!1}}}var i=new a,c=i;
+export{c as n};
