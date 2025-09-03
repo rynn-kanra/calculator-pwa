@@ -131,7 +131,6 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
         this.enqueue(p);
     }
     public openCashdrawer(): void { }
-    public printQR(): void { }
     public printBarcode(): void { }
     public pause(): void { }
 }

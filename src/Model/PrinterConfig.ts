@@ -6,7 +6,12 @@ export enum PrinterType {
   // Network = "network", // NOT SUPPORTED
   Imin_Build_In = "imin"
 }
-export type ImageType = "rastar" | "bit";
+export enum ImagePrintMode {
+  Rastar = "rastar",
+  Bit = "bit",
+  RamRastar = "ram-rastar",
+  DotMatrix = "dot-matrix"
+}
 
 type BluetoothPrinterOptions = {
   mtu: number;  // 20-512, (232) - 20 for safe value but slower
@@ -29,7 +34,7 @@ export class PrinterConfig {
   public autoConnect: boolean = true;
   public printerType: PrinterType = PrinterType.Bluetooth;
   public textAsImage: boolean = true;
-  public image: ImageType = "rastar";
+  public image: ImagePrintMode = ImagePrintMode.Rastar;
   public sharePrinter: boolean = false;
   public fontSize: number = 30;
   public fontFace: number = 0;

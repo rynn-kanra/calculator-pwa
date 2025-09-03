@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { AutoUpdateMode, CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
-import { ImageType, PrinterType } from '../Model/PrinterConfig';
+import { ImagePrintMode, PrinterType } from '../Model/PrinterConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
 import { IOCRService } from '../Services/OCR/OCRService';
@@ -158,9 +158,13 @@ export function SettingPopup(setting: SettingPopupProps) {
             </div>
             <div>Mode cetakan gambar</div>
             <div>
-              <select class='form' name="image-mode" value={o.image} onInput={(e) => { o.image = e.currentTarget.value as ImageType; }}>
-                <option value={'rastar'}>Rastar</option>
-                <option value={'bit'}>Bit</option>
+              <select class='form' name="image-mode" value={o.image} onInput={(e) => { o.image = e.currentTarget.value as ImagePrintMode; }}>
+                {[
+                  ["Raster Image in RAM (GS 8 L)", ImagePrintMode.RamRastar],
+                  ["Raster Image (GS v 0)", ImagePrintMode.Rastar],
+                  ["Bit Image (ESC *)", ImagePrintMode.Bit],
+                  ["Dot Matrix Image (ESC L)", ImagePrintMode.DotMatrix],
+                ].map(o => (<option value={o[1]}>{o[0]}</option>))}
               </select>
             </div>
             <div>Berbagi printer</div>

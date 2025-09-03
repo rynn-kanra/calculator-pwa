@@ -3,7 +3,7 @@ import { PrinterConfig } from "../Model/PrinterConfig";
 import { copy } from "../Utility/copy";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { retry } from "../Utility/retry";
-import { FontMode, FontStyle, IDevice, IGridOption, IPrinterService, PrintImageData, TextAlign, TextStyle } from "./IPrinterService";
+import { Barcode2DOption, BarcodeOption, FontMode, FontStyle, IDevice, IGridOption, IPrinterService, PrintImageData, TextAlign, TextStyle } from "./IPrinterService";
 
 export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
@@ -348,6 +348,5 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     }
     public abstract printImage(data: PrintImageData | Promise<PrintImageData>): void;
     public abstract openCashdrawer(): void;
-    public abstract printQR(data: string | PromiseLike<string>): void;
-    public abstract printBarcode(data: string | PromiseLike<string>): void;
+    public abstract printBarcode(data: string | PromiseLike<string>, option?: DeepPartial<BarcodeOption | Barcode2DOption>): void;
 }

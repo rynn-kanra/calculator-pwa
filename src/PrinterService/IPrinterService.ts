@@ -40,6 +40,75 @@ export type PrintImageData = {
     height: number;
 }
 
+export enum BarcodeType {
+    UPC_A = 65,
+    UPC_E = 66,
+    EAN13 = 67,
+    EAN8 = 68,
+    CODE39 = 69,
+    ITF = 70,
+    CODABAR = 71,
+    CODE93 = 72,
+    CODE128 = 79,
+    // CODE128_RAW = 73,
+    // GS1_128 = 74,
+    // GS1_OMNI = 75,
+    // GS1_TRUNCATED = 76,
+    // GS1_LIMITED = 77,
+    // GS1_EXPANDED = 78,
+
+    // 2D
+    PDF417 = 48,
+    QRCODE = 49,
+    AZTEC = 53,
+    DATA_MATRIX = 54,
+    // MAXICODE = 50,
+    // GS1_DATABAR_2D = 51,
+    // GS1_DATABAR_2D_COMPOSITE = 52,
+};
+export enum BarcodeTextPosition {
+    None = 0,
+    Above = 1,
+    Below = 2,
+    Both = 3,
+}
+export type BarcodeOption = {
+    height: number;
+    width: number; // 2-6, d:3
+    type: BarcodeType;
+    textPosition?: BarcodeTextPosition;
+    textFont?: number;
+};
+export type PDF417Option = {
+    type: BarcodeType.PDF417;
+    column: number; //0-30. d: 0
+    row: number; //0,3-90. d:0
+    width: number; //2-8. d:3
+    height: number; //2-8. d:3
+    truncated: boolean;
+    correctionLevel: number; // 1-40
+};
+export type QRCodeOption = {
+    type: BarcodeType.QRCODE;
+    mode: 49 | 50 | 51;
+    size: number; // 1-8
+    correctionLevel: 48 | 49 | 50 | 51;
+};
+export type AztecOption = {
+    type: BarcodeType.AZTEC;
+    compact: boolean; // full | compact
+    layer: number; // 0: auto, 1-32
+    size: number; // 2-16, d: 3
+    correctionLevel: number; // 5-95. d:23
+};
+export type DataMatrixOption = {
+    type: BarcodeType.DATA_MATRIX;
+    column: number; //0-30. d: 0
+    row: number; //0,3-90. d:0
+    size: number; // 2-16, d: 3
+};
+export type Barcode2DOption = QRCodeOption | AztecOption | PDF417Option | DataMatrixOption;
+
 export interface IPrinterService {
     option: PrinterConfig;
     device?: IDevice;
@@ -62,6 +131,5 @@ export interface IPrinterService {
     printHtml(html: string | PromiseLike<string>): void;
     printGrid(option: IGridOption, data: string[][] | PromiseLike<string[][]>): void;
     openCashdrawer(): void;
-    printQR(data: string | PromiseLike<string>): void;
-    printBarcode(data: string | PromiseLike<string>): void;
+    printBarcode(data: string | PromiseLike<string>, option?: DeepPartial<BarcodeOption | Barcode2DOption>): void;
 }
