@@ -16,7 +16,6 @@ import AuthenticationService from '../Services/AuthenticationService';
 import { route } from 'preact-router';
 import { ArchiveRestore, Camera, Delete, Printer, PrinterCheck, ReceiptText } from 'lucide-preact';
 import type { JSX } from 'preact/jsx-runtime';
-import { ClickAudio } from '../Services/AudioService';
 import { useSetting } from './SettingContext';
 
 const exps: [string, number][] = [];
@@ -44,7 +43,7 @@ export default function Calculator() {
 
   /*'△','▽','±', ' ', '00', '⚙', '⍐','☊', '📷︎' */
   const buttons = [
-    '⎙', 'REPRINT', 'CHECK', '☊',
+    '⎙', 'REPRINT', 'CHECK', '📷︎',
     'AC', 'CE', '%', '÷', '⌫',
     '7', '8', '9', '×',
     '4', '5', '6', '−',
