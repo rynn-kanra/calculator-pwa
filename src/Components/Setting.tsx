@@ -86,8 +86,13 @@ export default function Setting() {
       downloadTotal: 21_872_216
     });
   };
-  const updateVersion = () => {
+  const updateVersion = async () => {
     hapticFeedback();
+    const p = await Notification.requestPermission();
+    if (p !== "granted") {
+      alert("Permission denied");
+      return
+    }
     navigator.serviceWorker.controller?.postMessage({ action: "UPDATE:CHECK", params: [true] });
   };
 
@@ -350,7 +355,7 @@ export default function Setting() {
               if (newValue === AutoUpdateMode.checkDaily) {
                 const isSuccess = await PushService.subscribe();
                 if (!isSuccess) {
-                  throw new Error("Permssion denied");
+                  throw new Error("Permission denied");
                 }
               }
               data.autoUpdate = newValue;
