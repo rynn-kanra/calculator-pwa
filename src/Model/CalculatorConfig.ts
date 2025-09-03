@@ -7,6 +7,12 @@ export enum Layout0 {
   mode2 = "0|00|.",
   mode3 = "0|00|000"
 }
+export enum AutoUpdateMode {
+  silent,
+  checkDaily,
+  never,
+  alwaysOnline
+}
 
 export class CalculatorConfig {
   public maxDecimal: number = 8;
@@ -19,6 +25,7 @@ export class CalculatorConfig {
   public vibrate: boolean = true;
   public sound: boolean = true;
   public layout0: Layout0 = Layout0.mode1;
+  public autoUpdate: AutoUpdateMode = AutoUpdateMode.silent;
   public defaultConfig: PrinterConfig = new PrinterConfig();
   public printerConfig: { [key: string]: PrinterConfig } = {};
 
@@ -28,10 +35,15 @@ export class CalculatorConfig {
     }
 
     const id = printer.device?.id;
-    if (id && !this.printerConfig[id]) {
-      const pConfig = copy(new PrinterConfig(), this.defaultConfig, true);
-      pConfig.name = printer.device.name ?? `PRINTER ${this.defaultConfig.printerType}`.toUpperCase();
-      this.printerConfig[id] = pConfig;
+    if (id) {
+      let pConfig = this.printerConfig[id];
+      if (!((pConfig as any) instanceof PrinterConfig)) {
+        pConfig = copy(new PrinterConfig(), pConfig ?? this.defaultConfig, true);
+        if (!pConfig.name) {
+          pConfig.name = printer.device.name ?? `PRINTER ${this.defaultConfig.printerType}`.toUpperCase();
+        }
+        this.printerConfig[id] = pConfig;
+      }
     }
 
     printer.option = this.printerConfig[id] ?? this.defaultConfig;

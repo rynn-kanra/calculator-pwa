@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'preact/hooks';
-import { CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
+import { AutoUpdateMode, CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
 import { ImageType, PrinterType } from '../Model/PrinterConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
 import { IOCRService } from '../Services/OCR/OCRService';
-import SettingService from '../Services/SettingService';
 import BottomPopup from './BottomPopup';
 import '../Styles/Form.css';
 import TabView, { Tab } from './TabView';
-import IndexedDBService from '../Services/IndexedDBService';
 import AuthenticationService from '../Services/AuthenticationService';
+import PushService from '../Services/PushService';
+import LocalDBService from '../Services/LocalDBService';
 
 export interface SettingPopupProps {
   isOpen: boolean;
@@ -23,14 +23,11 @@ export interface SettingPopupProps {
 const onnx_depedencies = ["./workers/ort-wasm-simd-threaded.jsep.wasm"];
 export function SettingPopup(setting: SettingPopupProps) {
   let settingData = setting.setting!;
-  if (!settingData) {
-    settingData = SettingService.get();
-  }
 
   const [isONNXReady, setONNXReady] = useState(false);
-  const [data, setData] = useState(settingData);
+  const [data, setData] = useState(settingData ?? {});
   const [printerSettings, setPrinterSettings] = useState([] as Tab[]);
-  const [printerType, setPrinterType] = useState(data.defaultConfig.printerType);
+  const [printerType, setPrinterType] = useState(data?.defaultConfig?.printerType);
 
   useEffect(() => {
     Promise.all(
@@ -39,10 +36,19 @@ export function SettingPopup(setting: SettingPopupProps) {
       .then(o => {
         setONNXReady(o);
       });
+
+    if (!settingData) {
+      LocalDBService.get("setting").then(o => {
+        if (o) {
+          setData(o);
+          setPrinterType(o.defaultConfig.printerType);
+        }
+      });
+    }
   }, []);
 
   const onClose = () => {
-    SettingService.set(data);
+    LocalDBService.set("setting", data);
     setting.onClose && setting.onClose(data);
   };
 
@@ -51,8 +57,8 @@ export function SettingPopup(setting: SettingPopupProps) {
       title: `OCR Models`,
       icons: [
         {
-          sizes: "300x300",
-          src: "./assets/images/icon.png",
+          sizes: "192x192",
+          src: "./assets/images/icon.192.png",
           type: "image/png",
         },
       ],
@@ -64,8 +70,8 @@ export function SettingPopup(setting: SettingPopupProps) {
       title: `ONNX Runtime`,
       icons: [
         {
-          sizes: "300x300",
-          src: "./assets/images/icon.png",
+          sizes: "192x192",
+          src: "./assets/images/icon.192.png",
           type: "image/png",
         },
       ],
@@ -74,6 +80,9 @@ export function SettingPopup(setting: SettingPopupProps) {
   };
 
   useEffect(() => {
+    if (!data || !data.defaultConfig)
+      return;
+
     const printerSettings = [data.defaultConfig].concat(Object.values(data.printerConfig)).map((o, ix) => {
       const isDefault = o == data.defaultConfig;
       switch (o.printerType) {
@@ -307,6 +316,30 @@ export function SettingPopup(setting: SettingPopupProps) {
             <span class="slider"></span>
           </label>
         </div>
+        <div>Auto Update</div>
+        <div class="input-container">
+          <select class='form' name="autoUpdate" value={data.autoUpdate} onInput={async (e) => {
+            try {
+              const newValue = parseInt(e.currentTarget.value);
+              if (newValue === AutoUpdateMode.checkDaily) {
+                const isSuccess = await PushService.subscribe();
+                if (!isSuccess) {
+                  throw new Error("Permssion denied");
+                }
+              }
+              data.autoUpdate = newValue;
+            }
+            catch (er) {
+              alert(er);
+              e.currentTarget.value = data.autoUpdate.toString();
+            }
+          }}>
+            <option value={AutoUpdateMode.silent}>Silent</option>
+            <option value={AutoUpdateMode.checkDaily}>Cek setiap hari</option>
+            <option value={AutoUpdateMode.never}>Tidak pernah</option>
+            <option value={AutoUpdateMode.alwaysOnline}>Selalu Online</option>
+          </select>
+        </div>
         <div style={{
           gridColumn: "span 2"
         }}>
@@ -317,6 +350,7 @@ export function SettingPopup(setting: SettingPopupProps) {
           gridColumn: "span 2"
         }}>
           <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>DOWNLOAD</h4>
+          <button class="btn" onClick={() => navigator.serviceWorker.controller?.postMessage({ action: "UPDATE:CHECK", params: [true] })}>Check Update</button>
           <button class="btn" onClick={downloadONNX} disabled={(isONNXReady === true)}>Download ONNX Runtime</button>
           <button class="btn" onClick={downloadOCR} disabled={(setting.isOCRReady === true)}>Download OCR Dependencies</button>
         </div>

@@ -1,7 +1,15 @@
 /// <reference lib="webworker" />
 
+import { AutoUpdateMode, CalculatorConfig } from "./Model/CalculatorConfig";
 import DownloadService from "./Services/DownloadService";
-import { CACHE_NAME, FILES_TO_CACHE } from "./Utility/config";
+import IdentityService from "./Services/IdentityService";
+import LocalDBService, { VersionData } from "./Services/LocalDBService";
+import { CACHE_NAME } from "./Utility/config";
+
+type MessageAction = {
+    action: string,
+    params?: any[]
+}
 
 const shareTargetMessages: any[] = [];
 const clientIds = new Set<string>();
@@ -15,22 +23,125 @@ const getClients = async () => {
     return clients;
 }
 
+const getLatestVersion = async () => {
+    const versionResponse = await fetch("./assets/data/version.json", { cache: "no-cache" });
+    return await versionResponse.json() as VersionData;
+}
+
+const installVersion = async (version: VersionData, isFull: boolean = false) => {
+    const cache = await caches.open(CACHE_NAME);
+    let fetchFiles = version.app_files.map(file => (async () => {
+        const response = await fetch(file, { cache: "no-cache" });
+        if (response.ok && !response.redirected) {
+            await cache.put(file, response.clone());
+        }
+    })());
+    fetchFiles.splice(fetchFiles.length, 0, ...version.assets.map(file => (async () => {
+        const response = await fetch(file, { cache: isFull ? "no-cache" : "default" });
+        if (response.ok && !response.redirected) {
+            await cache.put(file, response.clone());
+        }
+    })()));
+    await Promise.all(fetchFiles);
+    await LocalDBService.set("version", version);
+}
+
+const checkUpdate = async () => {
+    const setting = await LocalDBService.get("setting");
+    if (setting.autoUpdate == AutoUpdateMode.checkDaily) {
+        let lastCheck = await LocalDBService.get("lastCheck");
+        if (!lastCheck || (lastCheck.getTime() + 24 * 60 * 60 * 1000) < Date.now()) {
+            IdentityService.pushMessage({
+                payload: JSON.stringify({
+                    action: "UPDATE:CHECK"
+                })
+            });
+            lastCheck = new Date();
+            await LocalDBService.set("lastCheck", lastCheck);
+        }
+
+        setTimeout(checkUpdate, (lastCheck.getTime() + 24 * 60 * 60 * 1000) - Date.now());
+    }
+};
+checkUpdate();
+
+const actionHandlers: { [key in string]: (...params: any[]) => Promise<void> } = {
+    BackgroundFeth: async (event: ExtendableMessageEvent, id: string, files: string[], options: BackgroundFetchOptions) => {
+        DownloadService.notifHandler(sw, id, files, options);
+    },
+    ready: async (event: ExtendableMessageEvent) => {
+        if (event.source instanceof Client) {
+            clientIds.add(event.source.id);
+        }
+
+        const clients = await getClients();
+        if (shareTargetMessages.length > 0 && clients.length > 0) {
+            const d = shareTargetMessages.splice(0, shareTargetMessages.length);
+            for (const pm of d) {
+                for (const client of clients) {
+                    client.postMessage(pm);
+                }
+            }
+        }
+    },
+    "UPDATE:CHECK": async (showNoUpdate: boolean = false) => {
+        const currentVersion = await LocalDBService.get("version");
+        const latestVersion = await getLatestVersion();
+        if (currentVersion?.version != latestVersion.version) {
+            await sw.registration.showNotification("Versi baru tersedia", {
+                body: `Printer Calculator: versi ${latestVersion.version}`,
+                icon: "./assets/images/icon.192.png",
+                requireInteraction: true,
+                data: {
+                    action: "UPDATE:INSTALL",
+                    params: [latestVersion]
+                } as MessageAction,
+                actions: [
+                    { action: 'cancel', title: 'Cancel' },
+                    { action: 'update', title: 'Update' }
+                ],
+                dir: "ltr",
+                lang: "id-ID",
+                silent: false,
+                badge: undefined,
+                tag: undefined
+            });
+        }
+        else if (showNoUpdate) {
+            await sw.registration.showNotification("Belum ada versi baru", {
+                body: `Printer Calculator: versi ${currentVersion.version}`,
+                icon: "./assets/images/icon.192.png",
+                requireInteraction: false,
+                dir: "ltr",
+                lang: "id-ID",
+                silent: false,
+                badge: undefined,
+                tag: undefined
+            });
+        }
+    },
+    "UPDATE:INSTALL": async (action, version: VersionData) => {
+        if (action == "cancel") {
+            return;
+        }
+
+        await installVersion(version, true);
+    }
+};
+const executeAction = async (msgAction: MessageAction) => {
+    const action = msgAction.action;
+    const params = msgAction.params || [];
+    const fn = actionHandlers[action];
+    if (fn) {
+        await fn.call(null, ...params);
+    }
+};
+
 const sw = self as unknown as ServiceWorkerGlobalScope;
 sw.addEventListener('install', (event: ExtendableEvent) => {
+    console.log('[SW] install');
     event.waitUntil(
-        caches.open(CACHE_NAME).then(async (cache) => {
-            Promise.all(
-                FILES_TO_CACHE.map(file => (async () => {
-                    const cached = await cache.match(file);
-                    if (!cached) {
-                        const response = await fetch(file);
-                        if (response.ok && !response.redirected) {
-                            await cache.put(file, response.clone());
-                        }
-                    }
-                })())
-            );
-        })
+        getLatestVersion().then(version => installVersion(version))
     );
     sw.skipWaiting();
 });
@@ -50,6 +161,16 @@ sw.addEventListener('activate', (event) => {
         )
     );
     sw.clients.claim();
+});
+
+sw.addEventListener('push', (event) => {
+    console.log(event);
+    if (!event.data) {
+        return;
+    }
+
+    const data = event.data.json() as MessageAction;
+    executeAction(data);
 });
 
 sw.addEventListener('fetch', (event) => {
@@ -94,61 +215,55 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
-    if (requestUrl.pathname.endsWith("/index.js") || requestUrl.pathname.endsWith("/index.css")) {
-        // always try network for index.js
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), 5000);
-        event.respondWith(
-            fetch(event.request, { signal: controller.signal })
-                .then(async (response) => {
+    // always use cache for other files
+    event.respondWith(
+        LocalDBService.get("setting").then(setting => {
+            if (setting.autoUpdate == AutoUpdateMode.alwaysOnline) {
+                return fetch(event.request, { cache: "no-cache" }).then(response => {
                     if (response.type == "basic") {
                         if (response.status == 200) {
                             // update cache with latest version
                             const reponseClone = response.clone();
                             caches.open(CACHE_NAME).then(cache => cache.put(event.request, reponseClone));
                         }
-                        else if (response.status >= 400) {
-                            const d = await caches.match(event.request);
-                            if (d) {
-                                return d.clone();
-                            }
-                        }
                     }
 
                     return response;
-                })
-                .catch(() => {
-                    // Offline fallback
-                    return caches.match(event.request) as Promise<Response>;
-                })
-                .finally(() => {
-                    clearTimeout(t);
-                })
-        );
-        return;
-    }
-
-    // always use cache for other files
-    event.respondWith(
-        caches.match(event.request).then(async cachedResponse => {
-            if (cachedResponse) {
-                return cachedResponse;
+                });
             }
 
-            // Otherwise fetch from network
-            return fetch(event.request).then(response => {
-                if (response.status == 200 && !response.redirected) {
-                    const responseClone = response.clone();
-                    // Cache the new response for future requests
-                    return caches.open(CACHE_NAME).then(cache => {
-                        // Clone the response because response streams can only be read once
-                        cache.put(event.request, responseClone);
+            return caches.match(event.request).then(async cachedResponse => {
+                let freshResponse: Promise<Response> | undefined = undefined;
+                let requireFetch = !cachedResponse;
+                if (!requireFetch && setting.autoUpdate == AutoUpdateMode.silent) {
+                    const version = await LocalDBService.get("version");
+                    requireFetch = version.app_files.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase());
+                }
+                if (requireFetch) {
+                    // Otherwise fetch from network
+                    const controller = new AbortController();
+                    const t = setTimeout(() => controller.abort(), 5000);
+                    freshResponse = fetch(event.request, { cache: "no-cache", signal: controller.signal }).then(response => {
+                        if (response.type == "basic") {
+                            if (response.status == 200) {
+                                // update cache with latest version
+                                const reponseClone = response.clone();
+                                caches.open(CACHE_NAME).then(cache => cache.put(event.request, reponseClone));
+                            }
+                        }
+
                         return response;
+                    }).finally(() => {
+                        clearTimeout(t);
                     });
                 }
 
-                return response;
-            });
+                if (!cachedResponse) {
+                    cachedResponse = await freshResponse!;
+                }
+
+                return cachedResponse;
+            })
         })
     );
 });
@@ -185,35 +300,24 @@ sw.addEventListener('backgroundfetchfail', async (event: BackgroundFetchUpdateUI
     }
 });
 
-const messageAction: { [key in string]: (...params: any[]) => Promise<void> } = {
-    BackgroundFeth: async (event: ExtendableMessageEvent, id: string, files: string[], options: BackgroundFetchOptions) => {
-        DownloadService.notifHandler(sw, id, files, options);
-    },
-    ready: async (event: ExtendableMessageEvent) => {
-        if (event.source instanceof Client) {
-            clientIds.add(event.source.id);
-        }
-
-        const clients = await getClients();
-        if (shareTargetMessages.length > 0 && clients.length > 0) {
-            const d = shareTargetMessages.splice(0, shareTargetMessages.length);
-            for (const pm of d) {
-                for (const client of clients) {
-                    client.postMessage(pm);
-                }
-            }
-        }
-    }
-};
 sw.addEventListener('message', (event) => {
     if (!event.data?.action) {
         return;
     }
 
-    const action = event.data.action;
-    const params = event.data.params || [];
-    const fn = messageAction[action];
-    if (fn) {
-        fn.call(null, event, ...params);
+    const msgAction = event.data as MessageAction;
+    msgAction.params = (msgAction.params || []);
+    msgAction.params.unshift(event);
+    executeAction(msgAction);
+});
+sw.addEventListener('notificationclick', (event) => {
+    event.notification.close(); // Close the notification
+
+    const msgAction = event.notification.data as MessageAction;
+    if (!msgAction) {
+        return;
     }
+    msgAction.params = (msgAction.params || []);
+    msgAction.params.unshift(event.action ?? "");
+    executeAction(msgAction);
 });

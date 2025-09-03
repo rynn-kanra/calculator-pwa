@@ -1,0 +1,17 @@
+{
+  "version": "1.0.1",
+  "assets": [
+    "./assets/images/icon.192.png",
+    "./assets/images/icon.512.png",
+    "./assets/images/camera.png",
+    "./assets/images/comment-dots.png",
+    "./assets/audio/click-in.mp3"
+  ],
+  "app_files": [
+    "./",
+    "./index.html",
+    "./manifest.json",
+    "./index.js",
+    "./index.css"
+  ]
+}

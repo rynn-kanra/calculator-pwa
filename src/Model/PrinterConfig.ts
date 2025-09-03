@@ -33,7 +33,7 @@ export class PrinterConfig {
   public sharePrinter: boolean = false;
   public fontSize: number = 30;
   public fontFace: number = 0;
-  public lineHeight: number = 1.2;
+  public lineHeight: number = 1;
   public paperWidth: number = 58;
   public dpi: number = 203;
   public serialOption?: SerialOptions;
