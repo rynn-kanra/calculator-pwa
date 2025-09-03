@@ -1,3 +1,5 @@
+/// <reference lib="webworker" />
+
 let canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D;
 let width = 300, height = 100;
 const silentData = new Uint8Array([128, 0, 0, 0, 128]);
