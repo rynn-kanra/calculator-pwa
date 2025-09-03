@@ -12,8 +12,7 @@
     "@types/dom-serial": "^1.0.6",
     "@types/w3c-web-usb": "^1.0.10",
     "@types/web": "^0.0.253",
-    "@types/web-bluetooth": "^0.0.21",
-    "rimraf": "^6.0.1"
+    "@types/web-bluetooth": "^0.0.21"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"
