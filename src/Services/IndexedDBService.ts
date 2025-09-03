@@ -1,4 +1,5 @@
 import * as idb from 'idb';
+import StorageService from './StorageService';
 
 type IDBTransactionStore<Schema extends idb.DBSchema, Tables extends idb.StoreNames<Schema>[]> = {
     [K in Extract<Tables[number], string>]: IndexedDbSet<Schema, K>
@@ -56,6 +57,7 @@ export class IndexedDBService<Context extends idb.DBSchema> {
     // consider idb
     protected async open(): Promise<idb.IDBPDatabase<Context>> {
         if (!this._db) {
+            await StorageService.persist();
             this._db = await idb.openDB<Context>(this._option.name, this._option.version, this._option);
         }
 

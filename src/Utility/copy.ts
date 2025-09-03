@@ -12,12 +12,16 @@ function isWritable<T extends object, KP extends keyof T>(obj: T, prop: KP) {
   return true;
 }
 
-export function copy<T extends object>(target?: DeepPartial<T>, source?: T, isSet: boolean = false): T {
+export function copy<T extends object>(target?: DeepPartial<T>, source?: T, isSet: boolean = false, isClone: boolean = false): T {
   if (!target || !source) {
     return (target || source) as T;
   }
 
   for (const prop in source) {
+    if (prop === "__proto__" || prop === "constructor") {
+      continue;
+    }
+    
     if (!isWritable(target, prop)) {
       continue;
     }
@@ -38,11 +42,16 @@ export function copy<T extends object>(target?: DeepPartial<T>, source?: T, isSe
       }
       case curVal === undefined:
       case curVal === null: {
-        target[prop] = source[prop];
+        if (isClone) {
+          target[prop] = structuredClone(source[prop]);
+        }
+        else {
+          target[prop] = source[prop];
+        }
         break;
       }
       case typeof curVal === "object": {
-        copy(curVal!, source[prop]!, isSet);
+        copy(curVal!, source[prop]!, isSet, isClone);
         break;
       }
       default: {

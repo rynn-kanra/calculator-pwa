@@ -1,6 +1,6 @@
 import { copy } from "../Utility/copy";
+import StorageService from "./StorageService";
 
-let isPersisted = false;
 export class LocalStorageService<T extends object> {
     constructor(private _type: new () => T, private _key: string, private _init: boolean = false) { }
     public get() {
@@ -16,16 +16,7 @@ export class LocalStorageService<T extends object> {
         return data;
     }
     public set(data: T) {
-        if (!isPersisted) {
-            navigator.storage.persisted()
-                .then(async persisted => {
-                    isPersisted = persisted;
-                    if (!persisted) {
-                        isPersisted = await navigator.storage.persist();
-                    }
-                });
-        }
-
+        StorageService.persist();
         let dataStr = "";
         if (data !== null && data !== undefined) {
             dataStr = JSON.stringify(data);

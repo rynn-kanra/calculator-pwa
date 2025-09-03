@@ -198,7 +198,7 @@ export function CalcParser(input: string) {
                 skipThousand = false;
             }
             let num = Number(token);
-            if (!skipThousand && num < 999) {
+            if (!skipThousand && Math.abs(num) < 999) {
                 num *= 1000;
                 result += num.toFixed(10).replace(/[.]?0+$/, '');
             }

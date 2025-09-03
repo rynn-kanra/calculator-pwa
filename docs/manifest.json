@@ -1,6 +1,6 @@
 {
-  "name": "Printer Calculator",
-  "short_name": "Print Calc",
+  "name": "Printer Calculator DEV",
+  "short_name": "Print Calc DEV",
   "description": "Printer Calculator is a lightweight App that lets you perform calculations and instantly print results using a thermal printer.\n\nThe app is itself a Progressive Web App which means it can be installed to the home screen of your mobile device or to your desktop.",
   "id": "print-calc",
   "start_url": ".",
@@ -82,18 +82,18 @@
     {
       "name": "Scan gambar",
       "short_name": "Scan gambar",
-      "url": "./?action=📷︎",
+      "url": "./#/ocr",
       "icons": [{ "src": "./assets/images/camera.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Pengenalan ucapan",
       "short_name": "Pengenalan ucapan",
-      "url": "./?action=☊",
+      "url": "./#/asr",
       "icons": [{ "src": "./assets/images/comment-dots.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "share_target": {
-    "action": "./?share=image",
+    "action": "./",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
@@ -120,7 +120,7 @@
   },
   "file_handlers": [
     {
-      "action": "./?open=image",
+      "action": "./#/ocr?open=image",
       "accept": {
         "image/png": [
           ".png"

@@ -1,26 +1,23 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
+import { Layout0 } from '../Model/CalculatorConfig';
 import { PrinterConfig, PrinterType } from '../Model/PrinterConfig';
 import { BluetoothPrinterService } from '../PrinterService/BluetoothPrinterService';
 import { IminPrinterService } from '../PrinterService/IminPrinterService';
 import { FontMode, IPrinterService, TextAlign, TextStyle } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { SerialPrinterService } from '../PrinterService/SerialPrinterService';
-import { CalcParser } from '../Services/MathLanguageParser';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { IOCRService } from '../Services/OCR/OCRService';
-import ScreenService from '../Services/ScreenService';
-import { SpeechService } from '../Services/SpeechService';
-import '../styles/button.css';
 import { DeepPartial } from '../Utility/DeepPartial';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
-import { SettingPopup } from './SettingPopup';
 import { USBPrinterService } from '../PrinterService/USBPrinterService';
-import { CheckPopup } from './CheckPopup';
 import AuthenticationService from '../Services/AuthenticationService';
-import LocalDBService from '../Services/LocalDBService';
-import { LocalStorageService } from '../Services/LocalStorageService';
+import { route } from 'preact-router';
+import { ArchiveRestore, Camera, Delete, Printer, PrinterCheck, ReceiptText } from 'lucide-preact';
+import type { JSX } from 'preact/jsx-runtime';
+import { ClickAudio } from '../Services/AudioService';
+import { useSetting } from './SettingContext';
 
 const exps: [string, number][] = [];
 let temp: string = "";
@@ -29,42 +26,25 @@ let input: string = "";
 
 let listenKeyboard = true;
 
-const settingService = new LocalStorageService(CalculatorConfig, "setting");
-const oldsetting = settingService.get();
-if (oldsetting) {
-  await LocalDBService.set("setting", oldsetting);
-  settingService.delete();
-}
-
-let setting = await LocalDBService.get("setting");
 let ocrService: IOCRService;
-let imageInput: HTMLInputElement | undefined;
-let speechService: SpeechService;
-let printer: IPrinterService | undefined = new LogPrinterService(setting.defaultConfig);
-printer.init();
-setting.apply(printer);
+let printer: IPrinterService | undefined;
+
 (globalThis as any).printer = printer;
-export function Calculator() {
+export default function Calculator() {
+  const [setting, setSetting, hapticFeedback] = useSetting();
   const [isOCRReady, setOCRReady] = useState(false);
   const [isCheckView, openCheckView] = useState(false);
-  const [showSetting, openSetting] = useState(false);
-  const [isListening, setListening] = useState(false);
-  const [isProcessing, setProcessing] = useState(false);
   const clickRef = useRef((a: string) => { });
-  const inAudioCtxRef = useRef<AudioContext | null>(null);
-  const inBufferRef = useRef<AudioBuffer | null>(null);
-  const [printerStatus, setPrinterStatus] = useState('offline');
+  const [printerStatus, setPrinterStatus] = useState<'offline' | 'online' | 'inactive'>('offline');
   const [showAC, setShowAC] = useState(true);
   const [operator, setOperator] = useState('');
   const [display, setDisplay] = useState('');
   const [checkIndex, setCheckIndex] = useState(-1);
-  const [checkDatas, setCheckDatas] = useState<string[]>([]);
-  const [isCheckData, showCheckData] = useState(false);
   const divRef = useRef<HTMLDivElement>(null);
 
-  /*'△','▽','±', ' ', '00', '⚙' */
+  /*'△','▽','±', ' ', '00', '⚙', '⍐','☊', '📷︎' */
   const buttons = [
-    '⎙', '⍐', 'CHECK', '📷︎', // '☊',
+    '⎙', 'REPRINT', 'CHECK', '☊',
     'AC', 'CE', '%', '÷', '⌫',
     '7', '8', '9', '×',
     '4', '5', '6', '−',
@@ -86,14 +66,15 @@ export function Calculator() {
   }
 
   const checkOCRDepedencies = () => {
+    if (!ocrService) {
+      ocrService = new GutenyeOCRService();
+    }
+
     Promise.all(
       ocrService.depedencies.map(o => caches.match(o))
     ).then(os => os.every(p => !!p))
       .then(o => {
         setOCRReady(o);
-        if (o) {
-          ocrService.init();
-        }
       });
   };
 
@@ -130,6 +111,7 @@ export function Calculator() {
 
       await d.init(id);
       setting.apply(d);
+      setSetting(setting);
       if (printer) {
         printer.dispose();
       }
@@ -145,108 +127,13 @@ export function Calculator() {
     return false;
   };
 
-  const processImage = async (file: File) => {
-    try {
-      listenKeyboard = false;
-      setProcessing(true);
-      const text = await ocrService.recognize(file);
-      console.log(text);
-
-      const replaceMap = new Map<RegExp, string>([
-        [/([0-9])[B&](?=[0-9])/g, '$18'],
-        [/([0-9])[Gb](?=[0-9])/g, '$11'],
-        [/([0-9])[iIl](?=[0-9])/g, '$11'],
-        [/([0-9])[q](?=[0-9])/g, '$19'],
-        [/([0-9])[oO](?=[0-9])/g, '$10'],
-        [/([0-9])[S](?=[0-9])/ig, '$15'],
-        [/([0-9])[Zz](?=[0-9])/g, '$12'],
-        [/([0-9])(?=[86]*0[86]*)[860][860][860]$/g, '$1000'],
-        [/([0-9][5])(?=[86]*0[86]*)[860][860]$/g, '$1500']
-      ]);
-      const replaceMap2 = new Map<RegExp, string>([
-        [/([0-9]).?[-]$/g, '$1000'],
-        [/[^0-9.,](?=.*[0-9]$)/g, ''],
-        [/([^50])(?=00$)/g, '$10'],
-      ]);
-      let ds = text.split('\n').map(o => {
-        const ix = o.lastIndexOf(' ');
-        return ix === -1 ? o : o.substring(ix + 1);
-      }).map(o => {
-        for (const d of replaceMap) {
-          o = o.replaceAll(d[0], d[1]);
-        }
-        if (o.length <= 7) {
-          for (const d of replaceMap2) {
-            o = o.replaceAll(d[0], d[1]);
-          }
-        }
-        else if (o.search(/[^0-9. -]/) >= 0) {
-          return "";
-        }
-        return o;
-      });
-
-      if (ds.some(o => o.length > 3)) {
-        ds = ds.map(o => o.length > 3 ? o : "");
-      }
-
-      const d = ds.join(' ');
-
-      console.log(d);
-      const commands = CalcParser(d);
-      console.log(commands);
-      setCheckDatas(commands.split("+"));
-      showCheckData(true);
-    }
-    catch (e) {
-      alert(e);
-    }
-    finally {
-      listenKeyboard = true;
-      setProcessing(false);
-    }
-  }
-
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const action = params.get('action');
-    if ([...buttons, action].indexOf('📷︎') !== -1) {
-      ocrService = new GutenyeOCRService();
+    const params = new URLSearchParams(window.location.hash.split('?')[1]);
+    if (buttons.indexOf('📷︎') !== -1) {
       checkOCRDepedencies();
     }
-    if ([...buttons, action].indexOf('☊') !== -1) {
-      speechService = new SpeechService();
-    }
 
-    if (setting.sound) {
-      inAudioCtxRef.current = new AudioContext();
-      fetch('assets/audio/click-in.mp3')
-        .then((res) => res.arrayBuffer())
-        .then((arrayBuffer) => inAudioCtxRef.current!.decodeAudioData(arrayBuffer))
-        .then((decoded) => {
-          inBufferRef.current = decoded;
-        });
-    }
-
-    if (setting.defaultConfig.autoConnect) {
-      (async () => {
-        for (const id in setting.printerConfig) {
-          const printerConfig = setting.printerConfig[id];
-          if (printerConfig?.autoConnect != true) {
-            continue;
-          }
-          const isConnected = await requestPrinter(id);
-          if (isConnected) break;
-        }
-      })();
-    }
-
-    navigator.serviceWorker.ready.then(() => {
-      if (navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ action: 'ready' });
-      }
-    });
-    navigator.serviceWorker.addEventListener('message', (ev) => {
+    const messageHandler = (ev: MessageEvent) => {
       if (ev.data) {
         switch (ev.data.type) {
           case "DOWNLOAD": {
@@ -261,32 +148,49 @@ export function Calculator() {
             }
             break;
           }
-          case "SHARE": {
-            processImage(ev.data.image as File);
-            break;
-          }
         }
       }
-    });
+    };
+    navigator.serviceWorker.addEventListener('message', messageHandler);
 
-    if (window.launchQueue) {
-      window.launchQueue.setConsumer(async (launchParams) => {
-        if (launchParams.files.length) {
-          for (const handle of launchParams.files) {
-            const file = await handle.getFile();
-            processImage(file);
-          }
-        }
-      });
-    }
-
-    if (action) {
-      handleClick(action);
-    }
+    setTimeout(() => {
+      const data = params.get('data');
+      if (data) {
+        inputBatch(data);
+      }
+      else if (exps.length > 0) {
+        inputBatch("+");
+      }
+    }, 100);
 
     divRef.current?.focus();
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', messageHandler);
+    };
   }, []);
+  useEffect(() => {
+    if (!setting || buttons.indexOf('⎙') === -1)
+      return;
 
+    if (!printer) {
+      printer = new LogPrinterService(setting.defaultConfig);
+      printer.init();
+      setting.apply(printer);
+    }
+
+    if (setting.defaultConfig.autoConnect && (printer instanceof LogPrinterService)) {
+      (async () => {
+        for (const id in setting.printerConfig) {
+          const printerConfig = setting.printerConfig[id];
+          if (printerConfig?.autoConnect != true) {
+            continue;
+          }
+          const isConnected = await requestPrinter(id);
+          if (isConnected) break;
+        }
+      })();
+    }
+  }, [setting]);
 
   const addResult = function (text: string, num: number) {
     const exp: [string, number] = [text, num];
@@ -295,6 +199,10 @@ export function Calculator() {
   }
   const isMultExp = (text: string) => text.indexOf("×") != -1 || text.indexOf("÷") != -1;
   const print = (exp: [string, number]) => {
+    if (printerStatus !== "online") {
+      return;
+    }
+
     const index = exps.indexOf(exp);
     if (index === 0) {
       if (setting.deviceName) {
@@ -363,91 +271,38 @@ export function Calculator() {
     return Number((n + Number.EPSILON).toFixed(15));
   }
   const handleClick = (value: string) => {
-    if (setting.vibrate) {
-      try {
-        navigator.vibrate?.(30); // vibrate for 30 milliseconds
-      } catch { }
-    }
-
-    if (setting.keepScreenAwake !== false) {
-      ScreenService.keepScreenAwake();
-    }
-
-    if (setting.sound) {
-      // play click sound
-      const ctx = inAudioCtxRef.current;
-      const buffer = inBufferRef.current;
-      if (ctx && buffer) {
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.start(0);
-      }
-    }
+    hapticFeedback();
 
     switch (value) {
       case "📷︎": {
-        if (!imageInput) {
-          imageInput = document.createElement("input") as HTMLInputElement;
-          imageInput.type = 'file';
-          imageInput.multiple = true;
-          imageInput.accept = "image/*";
-          imageInput.capture = "environment";
-          imageInput.style.display = "none";
-          document.body.appendChild(imageInput);
-          imageInput.onchange = async () => {
-            if (!imageInput!.files) return;
-
-            const file = imageInput?.files[0];
-            if (!file) return;
-
-            processImage(file);
-          };
-        }
-
-        imageInput.value = '';
-        imageInput.click();
+        document.startViewTransition(() => route("/ocr"));
         break;
       }
       case '☊': {
-        if (speechService.isListening) {
-          speechService.stop();
-          return;
-        }
-
-        speechService.requestPermission().then(async () => {
-          try {
-            const rprom = speechService.recognize();
-            setTimeout(() => {
-              listenKeyboard = false;
-              setListening(true);
-            }, 100);
-            const result = await rprom;
-            if (!result) {
-              return;
-            }
-            console.log(result);
-            const commands = CalcParser(result);
-            console.log(commands);
-            setCheckDatas(commands.split("+"));
-            showCheckData(true);
-          }
-          catch (e) {
-            alert(e);
-          }
-          finally {
-            listenKeyboard = true;
-            setListening(false);
-          }
-        });
-        break;
+        document.startViewTransition(() => route("/asr"));
       }
       case " ": {
         break;
       }
       case "⎙": {
-        if (!printer || printer instanceof LogPrinterService) {
-          requestPrinter();
+        switch (printerStatus) {
+          case "offline": {
+            requestPrinter();
+            break;
+          }
+          case "inactive": {
+            setPrinterStatus("online");
+            break;
+          }
+          case "online": {
+            setPrinterStatus("inactive");
+            break;
+          }
+        }
+        break;
+      }
+      case 'REPRINT': {
+        if (printerStatus !== "online" || exps.length <= 0) {
           return;
         }
 
@@ -459,7 +314,7 @@ export function Calculator() {
         printer?.printSeparator("-");
         let resultText = formatNumber(result);
         if (setting.printOperator) {
-          printer.printGrid({
+          printer?.printGrid({
             columns: [{
               width: 1,
               font: { fontStyle: FontMode.bold }
@@ -482,7 +337,7 @@ export function Calculator() {
         break;
       }
       case "⍐": {
-        if (!printer) {
+        if (printerStatus !== "online") {
           return;
         }
 
@@ -506,7 +361,7 @@ export function Calculator() {
         setCheckIndex(exps.length);
         setOperator("");
         setShowAC(true);
-        if (printer?.option.sharePrinter) {
+        if (printerStatus === "online" && printer?.option.sharePrinter) {
           printer?.pause();
         }
         break;
@@ -525,27 +380,29 @@ export function Calculator() {
 
         if (ncheckIndex >= exps.length && exps.length > 0) {
           temp = tempDisplay = input = "";
-          printer?.printSeparator("-");
-          let resultText = formatNumber(resultNumb);
-          if (setting.printOperator) {
-            printer?.printGrid({
-              columns: [{
-                width: 1,
-                font: { fontStyle: FontMode.bold }
-              }, {
-                align: TextAlign.right,
-                font: { fontStyle: FontMode.bold }
-              }],
-              gap: [0, 5]
-            }, [[resultText, '∗']]);
-          }
-          else {
-            printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
-          }
-          printer?.printSeparator("=");
-          printer?.lineFeed(1);
-          if (printer?.option.sharePrinter) {
-            printer?.pause();
+          if (printerStatus === "online") {
+            printer?.printSeparator("-");
+            let resultText = formatNumber(resultNumb);
+            if (setting.printOperator) {
+              printer?.printGrid({
+                columns: [{
+                  width: 1,
+                  font: { fontStyle: FontMode.bold }
+                }, {
+                  align: TextAlign.right,
+                  font: { fontStyle: FontMode.bold }
+                }],
+                gap: [0, 5]
+              }, [[resultText, '∗']]);
+            }
+            else {
+              printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
+            }
+            printer?.printSeparator("=");
+            printer?.lineFeed(1);
+            if (printer?.option.sharePrinter) {
+              printer?.pause();
+            }
           }
         }
         setCheckIndex(exps.length);
@@ -766,8 +623,8 @@ export function Calculator() {
       }
       case "⚙": {
         const fn = () => {
-          listenKeyboard = false;
-          openSetting(o => !o);
+          hapticFeedback();
+          document.startViewTransition(() => route('/setting'));
         };
         if (setting.lockSetting) {
           AuthenticationService.authenticate().then(o => {
@@ -941,7 +798,7 @@ export function Calculator() {
         touchAction: 'manipulation',
         overflow: 'hidden',
         flexDirection: 'column',
-        fontFamily: 'sans-serif',
+        viewTransitionName: "view-scale"
       }}
     >
       {/* Display Area */}
@@ -1005,9 +862,10 @@ export function Calculator() {
           let handlers = {
             onClick: () => clickRef.current(b)
           } as any;
+          let icon: string | JSX.Element = b;
           switch (b) {
             case 'AC': {
-              color = 'red';
+              color = '#f44336';
               show = showAC;
               fontSize = '1.5rem';
               break;
@@ -1025,13 +883,27 @@ export function Calculator() {
               break;
             }
             case '⎙': {
-              fontSize = '1.5rem';
-              if (printerStatus != "online") {
-                color = 'red';
+              switch (printerStatus) {
+                case "inactive": {
+                  icon = (<PrinterCheck />);
+                  break;
+                }
+                case "offline": {
+                  icon = (<Printer />);
+                  color = '#f44336';
+                  break;
+                }
+                case "online": {
+                  icon = (<PrinterCheck />);
+                  color = '#4caf50';
+                  break;
+                }
               }
+
               handlers = useLongPress({
                 onClick: () => clickRef.current(b),
                 onHold: () => {
+                  hapticFeedback();
                   if (printer) {
                     const d = printer;
                     printer = undefined;
@@ -1048,7 +920,6 @@ export function Calculator() {
               break;
             }
             case '⌫': {
-              fontSize = '1.5rem';
               handlers = useLongPress({
                 onClick: () => clickRef.current(b),
                 onHold: () => clickRef.current(b),
@@ -1056,12 +927,19 @@ export function Calculator() {
                 delay: 400,
                 interval: 100,
               });
+              icon = (<Delete />);
+              break;
+            }
+            case 'REPRINT': {
+              if (printerStatus == "offline") {
+                color = '#f44336';
+              }
+              icon = (<ReceiptText />);
               break;
             }
             case '⍐': {
-              fontSize = '1.5rem';
-              if (printerStatus != "online") {
-                color = 'red';
+              if (printerStatus == "offline") {
+                color = '#f44336';
               }
               handlers = useLongPress({
                 onClick: () => handleClick(b),
@@ -1070,6 +948,7 @@ export function Calculator() {
                 delay: 400,
                 interval: 100,
               });
+              icon = (<ArchiveRestore />);
               break;
             }
             case '▽': {
@@ -1106,6 +985,7 @@ export function Calculator() {
             }
             case '📷︎': {
               disabled = !isOCRReady;
+              icon = (<Camera />);
               break;
             }
             case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
@@ -1133,16 +1013,17 @@ export function Calculator() {
               color: color,
               height: '100%',
               width: '100%',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
             }}
             {...handlers}
           >
-            {b}
+            {icon}
           </button>);
         })}
       </div>
 
-      {/* Check Popup */}
-      <CheckPopup isOpen={isCheckData} onCancel={() => showCheckData(false)} onOK={(inputs) => { showCheckData(false); inputBatch(inputs.join('+') + '+') }} datas={checkDatas} />
       {/* Check Popup Area */}
       <BottomPopup isOpen={isCheckView} hideClose={true} contentStyle={{ height: 'calc(100dvh - 6rem)', backgroundColor: '#f0f0f0', padding: '1rem 0' }} onClose={() => { openCheckView(false); }}>
         <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>CHECK</h4>
@@ -1173,23 +1054,6 @@ export function Calculator() {
           </div>
         </div>
       </BottomPopup>
-      {/* setting Popup Area */}
-      <SettingPopup isOpen={showSetting} isOCRReady={isOCRReady} ocr={ocrService} onClose={(set) => {
-        if (printer) {
-          set.apply(printer);
-        }
-        setting = set;
-        openSetting(false);
-        listenKeyboard = true;
-      }} />
-      {/* Listening Popup */}
-      <BottomPopup isOpen={isListening} hideClose={true} onClose={() => { listenKeyboard = true; speechService.stop(); }}>
-        <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>Listening</h4>
-      </BottomPopup>
-      {/* Processing Popup */}
-      <BottomPopup isOpen={isProcessing} hideClose={true}>
-        <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>Processing</h4>
-      </BottomPopup>
     </div>
   );
-}
+};

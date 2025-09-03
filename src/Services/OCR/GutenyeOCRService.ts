@@ -13,6 +13,10 @@ export class GutenyeOCRService extends OCRServiceBase {
         './assets/models/paddleocr-en/dictionary.txt',
     ];
     public async init(): Promise<void> {
+        if (this._engine) {
+            return;
+        }
+
         const ocr = await loadDefault("./workers/gutenye.js");
         this._engine = await ocr.create({
             models: {
@@ -21,7 +25,7 @@ export class GutenyeOCRService extends OCRServiceBase {
                 dictionaryPath: './assets/models/paddleocr-en/dictionary.txt'
             },
             onnxOptions: {
-                executionProviders: ['wasm'],
+                executionProviders: ['webnn', 'webgpu', 'wasm'],
                 graphOptimizationLevel: 'all'
             }
         });

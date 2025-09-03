@@ -1,21 +1,3 @@
-declare global {
-    interface WakeLock {
-        request: (type: 'screen') => Promise<any>;
-    }
-
-    interface WakeLockSentinel {
-        released: boolean;
-        release: () => Promise<void>;
-        onrelease: () => void;
-    }
-
-    interface Navigator {
-        wakeLock: {
-            request: (type: 'screen') => Promise<WakeLockSentinel>;
-        };
-    }
-}
-
 class ScreenService {
     private _wakeLock?: WakeLockSentinel;
     public async keepScreenAwake(): Promise<boolean> {
