@@ -18,6 +18,9 @@ export function copy<T extends object>(target?: DeepPartial<T>, source?: T, isSe
   }
 
   for (const prop in source) {
+    if (prop === "__proto__" || prop === "constructor") {
+      continue;
+    }
     if (!isWritable(target, prop)) {
       continue;
     }
