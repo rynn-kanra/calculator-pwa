@@ -355,7 +355,7 @@ export default function Setting() {
           }}>
             <option value={AutoUpdateMode.silent}>Silent</option>
             <option value={AutoUpdateMode.checkDaily}>Cek setiap hari</option>
-            <option value={AutoUpdateMode.never}>Tidak pernah</option>
+            <option value={AutoUpdateMode.never}>Manual</option>
             <option value={AutoUpdateMode.alwaysOnline}>Selalu Online</option>
           </select>
         </div>
