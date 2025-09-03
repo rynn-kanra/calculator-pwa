@@ -13,7 +13,7 @@ const OCR = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isCameraOn, setCameraOn] = useState<boolean>(false);
   const [image, setImage] = useState<string | null>(null);
-  const [setting] = useSetting();
+  const [setting,, hapticFeedback] = useSetting();
 
   // Define box dimensions (in % relative to video)
   const box = {
@@ -162,8 +162,11 @@ const OCR = () => {
       if (!commands) {
         throw new Error("no numbers");
       }
+
       stopVideo();
-      route(`/check?data=${encodeURIComponent(commands)}`);
+      document.startViewTransition(() => {
+        route(`/check?data=${encodeURIComponent(commands)}`);
+      });
     }
     catch (e) {
       alert(e);
@@ -178,10 +181,8 @@ const OCR = () => {
     const canvas = canvasRef.current;
 
     if (video && canvas) {
-      if (setting.sound) {
-        ClickAudio.play();
-      }
-
+      hapticFeedback();
+      
       const videoRect = video.getBoundingClientRect();
       const videoAspect = video.videoWidth / video.videoHeight;
       const visibleAspect = videoRect.width / videoRect.height;
@@ -230,24 +231,22 @@ const OCR = () => {
     if (!inputRef.current) {
       return;
     }
-    if (setting.sound) {
-      ClickAudio.play();
-    }
+    hapticFeedback();
 
     inputRef.current.value = '';
     inputRef.current.click();
   };
   const cancel = () => {
-    if (setting.sound) {
-      ClickAudio.play();
-    }
+    hapticFeedback();
 
     stopVideo();
-    route("/");
+    document.startViewTransition(() => {
+      route("/");
+    });
   };
 
   return (
-    <div style={{ height: '100dvh', width: "100dvw", position: "relative" }}>
+    <div style={{ height: '100dvh', width: "100dvw", position: "relative", viewTransitionName: "view-scale" }}>
       <canvas ref={canvasRef} style={{ display: 'none' }} />
       <input type="file" multiple={false} accept="image/*" ref={inputRef} style={{ display: 'none' }} />
       <video ref={videoRef} autoPlay playsInline style={{
@@ -288,7 +287,7 @@ const OCR = () => {
         fontSize: '2rem',
         transform: 'translate(-50%,-25%)',
         transition: 'opacity 0.3s ease',
-      }} onClick={selectImage}><FileImage /></button>
+      }} onClick={cancel}><X /></button>
       <button class="float-btn" disabled={!isCameraOn} style={{
         position: "absolute",
         left: "50%", top: 'auto', bottom: "10px", opacity: 0.5,
@@ -302,7 +301,7 @@ const OCR = () => {
         fontSize: '2rem',
         transform: 'translate(50%,-25%)',
         transition: 'opacity 0.3s ease',
-      }} onClick={cancel}><X /></button>
+      }} onClick={selectImage}><FileImage /></button>
     </div>
   );
 };

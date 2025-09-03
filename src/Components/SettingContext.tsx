@@ -4,8 +4,9 @@ import { CalculatorConfig } from '../Model/CalculatorConfig';
 import LocalDBService from '../Services/LocalDBService';
 import { LocalStorageService } from '../Services/LocalStorageService';
 import { ClickAudio } from '../Services/AudioService';
+import ScreenService from '../Services/ScreenService';
 
-const SettingContext = createContext<[CalculatorConfig, Dispatch<StateUpdater<CalculatorConfig>>]>([] as any);
+const SettingContext = createContext<[CalculatorConfig, Dispatch<StateUpdater<CalculatorConfig>>, () => void]>([] as any);
 // recover old setting
 const settingService = new LocalStorageService(CalculatorConfig, "setting");
 const oldsetting = settingService.get();
@@ -24,6 +25,9 @@ export function SettingProvider({ children }: any) {
         await ClickAudio.init();
       }
     })();
+    if (setting.keepScreenAwake !== false) {
+      ScreenService.keepScreenAwake();
+    }
   }, [setting]);
   return (
     <SettingContext.Provider value={[
@@ -34,6 +38,17 @@ export function SettingProvider({ children }: any) {
         }
         LocalDBService.set("setting", d);
         setSetting(d);
+      },
+      () => {
+        if (setting.vibrate) {
+          try {
+            navigator.vibrate?.(30); // vibrate for 30 milliseconds
+          } catch { }
+        }
+  
+        if (setting.sound) {
+          ClickAudio.play();
+        }    
       }
     ]}>
       {children}

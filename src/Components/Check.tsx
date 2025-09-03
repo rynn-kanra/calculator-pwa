@@ -2,35 +2,31 @@ import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { Trash2 } from 'lucide-preact';
 import { useSetting } from './SettingContext';
-import { ClickAudio } from '../Services/AudioService';
 
 export default function Check() {
   const [inputs, setInputs] = useState<string[]>([]);
-  const [setting] = useSetting();
+  const [, , hapticFeedback] = useSetting();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split('?')[1]);
     const data = params.get('data');
     if (data) {
-      setInputs(data.split("+"));
+      setInputs(data.split("+").filter(o => o));
     }
   }, []);
 
   const cancel = () => {
-    if (setting.sound) {
-      ClickAudio.play();
-    }
-    window.history.back();
+    hapticFeedback();
+
+    document.startViewTransition(() => window.history.back());
   };
   const ok = () => {
-    if (setting.sound) {
-      ClickAudio.play();
-    }
+    hapticFeedback();
 
-    route(`/?data=${encodeURIComponent(inputs.join('+') + '+')}`)
+    document.startViewTransition(() => route(`/?data=${encodeURIComponent(inputs.join('+') + '+')}`));
   };
 
-  return (<div style={{ height: '100dvh', backgroundColor: '#f0f0f0', padding: '1rem 0 0 0', boxSizing: "border-box" }}>
+  return (<div style={{ height: '100dvh', backgroundColor: '#f0f0f0', padding: '1rem 0 0 0', boxSizing: "border-box", viewTransitionName: "view-scale" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: "1rem", margin: "0 1rem 1rem 1rem" }}>
       <div>
         <button class="btn-small" style={{ color: "slategrey", margin: 0 }} onClick={cancel}>CANCEL</button>

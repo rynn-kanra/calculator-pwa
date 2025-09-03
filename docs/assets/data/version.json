@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "assets": [
     "./assets/images/icon.192.png",
     "./assets/images/icon.512.png",
@@ -11,7 +11,21 @@
     "./",
     "./index.html",
     "./manifest.json",
-    "./index.js",
-    "./index.css"
+    "./chunk-05rk87xd.js",
+    "./chunk-1zvvg1s1.js",
+    "./chunk-6afj23f8.js",
+    "./chunk-6k3gf01f.js",
+    "./chunk-8t5bzhym.js",
+    "./chunk-aw07bxs0.js",
+    "./chunk-bry1zf36.js",
+    "./chunk-jsb4cpde.js",
+    "./chunk-nwe100e9.js",
+    "./chunk-qy7ghm7b.js",
+    "./chunk-tny8d8k8.js",
+    "./chunk-w45tr7r8.js",
+    "./chunk-wmn11mg6.js",
+    "./chunk-y6qmrxwj.js",
+    "./index.css",
+    "./index.js"
   ]
 }

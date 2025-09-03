@@ -4,12 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "prebuild": "rimraf docs/*.js docs/*.css",
-    "predev": "rimraf docs/*.js docs/*.css",
-    "build:exe": "bun build src/index.ts src/sw.ts src/workers/gutenye.ts --outdir docs --minify --drop=console --drop=debugger --compile",
-    "build": "bun build src/index.ts src/sw.ts src/workers/gutenye.ts --outdir docs --splitting --minify --drop=console --drop=debugger",
-    "dev": "bun build src/index.ts src/sw.ts src/workers/gutenye.ts --outdir docs --splitting --watch",
-    "serve": "bunx serve docs"
+    "build": "bun scripts/build.js",
+    "dev": "bun scripts/build.js --dev"
   },
   "devDependencies": {
     "@types/bun": "latest",

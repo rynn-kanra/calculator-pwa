@@ -6,18 +6,15 @@ import { IminPrinterService } from '../PrinterService/IminPrinterService';
 import { FontMode, IPrinterService, TextAlign, TextStyle } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { SerialPrinterService } from '../PrinterService/SerialPrinterService';
-import { CalcParser } from '../Services/MathLanguageParser';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { IOCRService } from '../Services/OCR/OCRService';
-import ScreenService from '../Services/ScreenService';
-import { SpeechService } from '../Services/SpeechService';
 import { DeepPartial } from '../Utility/DeepPartial';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
 import { USBPrinterService } from '../PrinterService/USBPrinterService';
 import AuthenticationService from '../Services/AuthenticationService';
 import { route } from 'preact-router';
-import { ArchiveRestore, Camera, Delete, Printer, PrinterCheck, ReceiptText, ScrollText } from 'lucide-preact';
+import { ArchiveRestore, Camera, Delete, Printer, PrinterCheck, ReceiptText } from 'lucide-preact';
 import type { JSX } from 'preact/jsx-runtime';
 import { ClickAudio } from '../Services/AudioService';
 import { useSetting } from './SettingContext';
@@ -30,15 +27,13 @@ let input: string = "";
 let listenKeyboard = true;
 
 let ocrService: IOCRService;
-let speechService: SpeechService;
 let printer: IPrinterService | undefined;
 
 (globalThis as any).printer = printer;
 export default function Calculator() {
-  const [setting, setSetting] = useSetting();
+  const [setting, setSetting, hapticFeedback] = useSetting();
   const [isOCRReady, setOCRReady] = useState(false);
   const [isCheckView, openCheckView] = useState(false);
-  const [isListening, setListening] = useState(false);
   const clickRef = useRef((a: string) => { });
   const [printerStatus, setPrinterStatus] = useState<'offline' | 'online' | 'inactive'>('offline');
   const [showAC, setShowAC] = useState(true);
@@ -47,9 +42,9 @@ export default function Calculator() {
   const [checkIndex, setCheckIndex] = useState(-1);
   const divRef = useRef<HTMLDivElement>(null);
 
-  /*'△','▽','±', ' ', '00', '⚙', '⍐' */
+  /*'△','▽','±', ' ', '00', '⚙', '⍐','☊', '📷︎' */
   const buttons = [
-    '⎙', 'REPRINT', 'CHECK', '📷︎', // '☊',
+    '⎙', 'REPRINT', 'CHECK', '☊',
     'AC', 'CE', '%', '÷', '⌫',
     '7', '8', '9', '×',
     '4', '5', '6', '−',
@@ -134,15 +129,8 @@ export default function Calculator() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split('?')[1]);
-    const action = params.get('action');
-    if ([...buttons, action].indexOf('📷︎') !== -1) {
+    if (buttons.indexOf('📷︎') !== -1) {
       checkOCRDepedencies();
-    }
-    if ([...buttons, action].indexOf('☊') !== -1 && !speechService) {
-      speechService = new SpeechService();
-    }
-    if ([...buttons, action].indexOf('⎙') !== -1 && !speechService) {
-      speechService = new SpeechService();
     }
 
     const messageHandler = (ev: MessageEvent) => {
@@ -166,10 +154,6 @@ export default function Calculator() {
     navigator.serviceWorker.addEventListener('message', messageHandler);
 
     setTimeout(() => {
-      if (action) {
-        handleClick(action);
-      }
-
       const data = params.get('data');
       if (data) {
         inputBatch(data);
@@ -185,7 +169,7 @@ export default function Calculator() {
     };
   }, []);
   useEffect(() => {
-    if (!setting)
+    if (!setting || buttons.indexOf('⎙') === -1)
       return;
 
     if (!printer) {
@@ -287,56 +271,15 @@ export default function Calculator() {
     return Number((n + Number.EPSILON).toFixed(15));
   }
   const handleClick = (value: string) => {
-    if (setting.vibrate) {
-      try {
-        navigator.vibrate?.(30); // vibrate for 30 milliseconds
-      } catch { }
-    }
-
-    if (setting.keepScreenAwake !== false) {
-      ScreenService.keepScreenAwake();
-    }
-
-    if (setting.sound) {
-      ClickAudio.play();
-    }
+    hapticFeedback();
 
     switch (value) {
       case "📷︎": {
-        route(`/ocr`);
+        document.startViewTransition(() => route("/ocr"));
         break;
       }
       case '☊': {
-        if (speechService.isListening) {
-          speechService.stop();
-          return;
-        }
-
-        speechService.requestPermission().then(async () => {
-          try {
-            const rprom = speechService.recognize();
-            setTimeout(() => {
-              listenKeyboard = false;
-              setListening(true);
-            }, 100);
-            const result = await rprom;
-            if (!result) {
-              return;
-            }
-            console.log(result);
-            const commands = CalcParser(result);
-            console.log(commands);
-            route(`/check?data=${encodeURIComponent(commands)}`);
-          }
-          catch (e) {
-            alert(e);
-          }
-          finally {
-            listenKeyboard = true;
-            setListening(false);
-          }
-        });
-        break;
+        document.startViewTransition(() => route("/asr"));
       }
       case " ": {
         break;
@@ -680,7 +623,8 @@ export default function Calculator() {
       }
       case "⚙": {
         const fn = () => {
-          route('/setting');
+          hapticFeedback();
+          document.startViewTransition(() => route('/setting'));
         };
         if (setting.lockSetting) {
           AuthenticationService.authenticate().then(o => {
@@ -854,6 +798,7 @@ export default function Calculator() {
         touchAction: 'manipulation',
         overflow: 'hidden',
         flexDirection: 'column',
+        viewTransitionName: "view-scale"
       }}
     >
       {/* Display Area */}
@@ -958,6 +903,7 @@ export default function Calculator() {
               handlers = useLongPress({
                 onClick: () => clickRef.current(b),
                 onHold: () => {
+                  hapticFeedback();
                   if (printer) {
                     const d = printer;
                     printer = undefined;
@@ -1107,10 +1053,6 @@ export default function Calculator() {
             })}
           </div>
         </div>
-      </BottomPopup>
-      {/* Listening Popup */}
-      <BottomPopup isOpen={isListening} hideClose={true} onClose={() => { listenKeyboard = true; speechService.stop(); }}>
-        <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0', fontSize: '1rem' }}>Listening</h4>
       </BottomPopup>
     </div>
   );

@@ -14,7 +14,7 @@ import { route } from 'preact-router';
 let ocrService: OCRServiceBase;
 const onnx_depedencies = ["./workers/ort-wasm-simd-threaded.jsep.wasm"];
 export default function Setting() {
-  const [setting, setSetting] = useSetting();
+  const [setting, setSetting, hapticFeedback] = useSetting();
 
   const [isOCRReady, setOCRReady] = useState(true);
   const [isONNXReady, setONNXReady] = useState(true);
@@ -42,14 +42,17 @@ export default function Setting() {
   }, []);
 
   const onCancel = () => {
-    route("/");
+    hapticFeedback();
+    document.startViewTransition(() => route(`/`));
   };
   const onSave = () => {
+    hapticFeedback();
     setSetting(data);
-    route("/");
+    document.startViewTransition(() => route(`/`));
   };
 
   const downloadOCR = () => {
+    hapticFeedback();
     DownloadService.download("ocr", ocrService.depedencies, {
       title: `OCR Models`,
       icons: [
@@ -63,6 +66,7 @@ export default function Setting() {
     });
   };
   const downloadONNX = () => {
+    hapticFeedback();
     DownloadService.download("onnx", onnx_depedencies, {
       title: `ONNX Runtime`,
       icons: [
@@ -74,6 +78,10 @@ export default function Setting() {
       ],
       downloadTotal: 21_872_216
     });
+  };
+  const updateVersion = () => {
+    hapticFeedback();
+    navigator.serviceWorker.controller?.postMessage({ action: "UPDATE:CHECK", params: [true] });
   };
 
   useEffect(() => {
@@ -225,7 +233,7 @@ export default function Setting() {
     setPrinterSettings(printerSettings);
   }, [data, printerType]);
 
-  return (<div style={{ height: '100dvh', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0 0', boxSizing: "border-box" }}>
+  return (<div style={{ height: '100dvh', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0 0', boxSizing: "border-box", viewTransitionName: "view-scale" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: "1rem", margin: "0 1rem 1rem 1rem" }}>
       <div>
         <button class="btn-small" style={{ color: "slategrey", margin: 0 }} onClick={onCancel}>CANCEL</button>
@@ -361,7 +369,7 @@ export default function Setting() {
           gridColumn: "span 2"
         }}>
           <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>DOWNLOAD</h4>
-          <button class="btn" onClick={() => navigator.serviceWorker.controller?.postMessage({ action: "UPDATE:CHECK", params: [true] })}>Check Update</button>
+          <button class="btn" onClick={updateVersion}>Check Update</button>
           {!isONNXReady && (<button class="btn" onClick={downloadONNX}>Download ONNX Runtime</button>)}
           {!isOCRReady && (<button class="btn" onClick={downloadOCR}>Download OCR Dependencies</button>)}
         </div>

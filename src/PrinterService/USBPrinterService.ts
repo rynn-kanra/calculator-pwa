@@ -15,6 +15,13 @@ const DEFAULT_PROFILE: DeviceProfile = {
     interface: 0
 };
 const DEVICE_PROFILES: DeviceProfile[] = [
+    {
+        vendorId: 0x4B43,
+        productId: 0x3830,
+        configuration: 1,
+        interface: 0
+    },
+
     /* POS-8022 and similar printers */
     {
         vendorId: 0x0483,
@@ -139,6 +146,9 @@ export class USBPrinterService extends ESCPrinterService {
             return found;
         }) ?? DEFAULT_PROFILE;
         await device.open();
+        if (!device.configuration) {
+            await device.selectConfiguration(1);
+        }
         await device.selectConfiguration(this._profile.configuration);
         await device.claimInterface(this._profile.interface);
 
