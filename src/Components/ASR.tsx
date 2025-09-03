@@ -29,7 +29,7 @@ export default function ASR() {
     const canvas = canvasRef.current!;
     const offscreen = canvas.transferControlToOffscreen();
 
-    worker = new Worker(new URL('./workers/audiovisual.js', import.meta.url), {
+    worker = new Worker(new URL('./workers/AudioVisual.js', import.meta.url), {
       type: 'module'
     });
 
