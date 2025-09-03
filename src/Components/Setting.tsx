@@ -3,7 +3,7 @@ import { AutoUpdateMode, CalculatorConfig, Layout0 } from '../Model/CalculatorCo
 import { ImagePrintMode, PrinterType } from '../Model/PrinterConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
-import { IOCRService, OCRServiceBase } from '../Services/OCR/OCRService';
+import { OCRServiceBase } from '../Services/OCR/OCRService';
 import TabView, { Tab } from './TabView';
 import AuthenticationService from '../Services/AuthenticationService';
 import PushService from '../Services/PushService';
@@ -23,6 +23,13 @@ export default function Setting() {
   const [printerType, setPrinterType] = useState(data?.defaultConfig?.printerType);
 
   useEffect(() => {
+    if (setting.lockSetting) {
+      AuthenticationService.authenticate().then(o => {
+        if (!o) {
+          document.startViewTransition(() => route(`/`));
+        }
+      });
+    }
     Promise.all(
       onnx_depedencies.map(o => caches.match(o))
     ).then(os => os.every(p => !!p))

@@ -621,20 +621,8 @@ export default function Calculator() {
         break;
       }
       case "⚙": {
-        const fn = () => {
-          hapticFeedback();
-          document.startViewTransition(() => route('/setting'));
-        };
-        if (setting.lockSetting) {
-          AuthenticationService.authenticate().then(o => {
-            if (o) {
-              fn();
-            }
-          });
-        }
-        else {
-          fn();
-        }
+        hapticFeedback();
+        document.startViewTransition(() => route('/setting'));
         break;
       }
       // 0-9
