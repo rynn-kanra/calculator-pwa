@@ -1,7 +1,7 @@
 import { ImagePrintMode, PrinterConfig } from "../Model/PrinterConfig";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { PrinterServiceBase } from "./PrinterServiceBase";
-import { AztecOption, Barcode2DOption, BarcodeOption, BarcodeTextPosition, BarcodeType, DataMatrixOption, FontMode, FontStyle, PDF417Option, PrintImageData, QRCodeOption, TextAlign, TextStyle } from "./IPrinterService";
+import { AztecOption, Barcode2DOption, Barcode1DOption, BarcodeTextPosition, BarcodeType, DataMatrixOption, FontMode, FontStyle, PDF417Option, PrintImageData, QRCodeOption, TextAlign, TextStyle } from "./IPrinterService";
 import { concat, toUtf8 } from "../Utility/crypto";
 
 const ESC = 0x1B;
@@ -202,8 +202,8 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
     public printBarcode(data: string, option?: DeepPartial<QRCodeOption>): void;
     public printBarcode(data: string, option?: DeepPartial<AztecOption>): void;
     public printBarcode(data: string, option?: DeepPartial<DataMatrixOption>): void;
-    public printBarcode(data: string, option?: DeepPartial<BarcodeOption>): void;
-    public printBarcode(data: string, option?: DeepPartial<BarcodeOption | Barcode2DOption>) {
+    public printBarcode(data: string, option?: DeepPartial<Barcode1DOption>): void;
+    public printBarcode(data: string, option?: DeepPartial<Barcode1DOption | Barcode2DOption>) {
         const type = option?.type ?? BarcodeType.CODE128;
         this.enqueue(Promise.resolve(data).then(data => {
             const bit = toUtf8(data);
@@ -322,7 +322,6 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
                     ];
                     break;
                 }
-                // Barcode Function A more common
                 case BarcodeType.UPC_A:
                 case BarcodeType.UPC_E:
                 case BarcodeType.EAN13:
@@ -330,12 +329,13 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
                 case BarcodeType.CODE39:
                 case BarcodeType.ITF:
                 case BarcodeType.CODABAR: {
-                    const setting: BarcodeOption = {
+                    // Barcode Function A more common
+                    const setting = {
+                        type: type,
                         width: 3,
                         height: 162,
-                        type: type,
                         ...option
-                    };
+                    } as Barcode1DOption;
 
                     // 1D Barcode
                     let d: number[] = [];
@@ -357,15 +357,16 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
                         GS, 0x6B, (setting.type - 65)
                     ];
                     footers = [0x00];
+                    break;
                 }
-                // Barcode Function B support more Type
                 default: {
-                    const setting: BarcodeOption = {
+                    // Barcode Function B support more Type
+                    const setting = {
+                        type: type,
                         width: 3,
                         height: 162,
-                        type: BarcodeType.CODE128,
                         ...option
-                    };
+                    } as Barcode1DOption;
 
                     // 1D Barcode
                     let d: number[] = [];
@@ -386,6 +387,7 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
                         // GS k m n d1..dn
                         GS, 0x6B, setting.type, bit.length
                     ];
+                    break;
                 }
             }
 

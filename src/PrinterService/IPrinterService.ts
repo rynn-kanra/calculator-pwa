@@ -72,10 +72,10 @@ export enum BarcodeTextPosition {
     Below = 2,
     Both = 3,
 }
-export type BarcodeOption = {
+export type Barcode1DOption = {
+    type: BarcodeType.UPC_A | BarcodeType.UPC_E | BarcodeType.EAN13 | BarcodeType.EAN8 | BarcodeType.CODE39 | BarcodeType.ITF | BarcodeType.CODABAR | BarcodeType.CODE93 | BarcodeType.CODE128;
     height: number;
     width: number; // 2-6, d:3
-    type: BarcodeType;
     textPosition?: BarcodeTextPosition;
     textFont?: number;
 };
@@ -131,5 +131,5 @@ export interface IPrinterService {
     printHtml(html: string | PromiseLike<string>): void;
     printGrid(option: IGridOption, data: string[][] | PromiseLike<string[][]>): void;
     openCashdrawer(): void;
-    printBarcode(data: string | PromiseLike<string>, option?: DeepPartial<BarcodeOption | Barcode2DOption>): void;
+    printBarcode(data: string | PromiseLike<string>, option?: DeepPartial<Barcode1DOption | Barcode2DOption>): void;
 }
