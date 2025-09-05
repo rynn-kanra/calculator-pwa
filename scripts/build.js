@@ -3,10 +3,15 @@ import path from "path";
 import { watch } from "fs/promises";
 
 let isDev;
+let isPublish;
 for (const arg of process.argv.slice(2)) {
     switch (arg) {
         case "--dev": {
             isDev = true;
+            break;
+        }
+        case "--publish": {
+            isPublish = true;
             break;
         }
     }
@@ -65,7 +70,7 @@ async function updateVersion() {
 
     // Step 3: Update JSON content based on filenames
     // For example: add a key for each script
-    if (!isDev) {
+    if (isPublish) {
         json.version = (json.version || "1.0.0").split('.').map((v, i) => i == 2 ? Number(v) + 1 : v).join('.')
     }
     json.app_files = defaultAppFiles.concat(jsFiles.map(o => `./${o}`));
@@ -77,16 +82,14 @@ async function updateVersion() {
 try {
     await clean();
     await run();
+    await updateVersion();
     console.log("✅ build done.");
 }
 catch (err) {
     console.error("❌ Error in build script:", err);
 }
 
-if (!isDev) {
-    await updateVersion();
-}
-else {
+if (isDev) {
     const watcher = watch(
         sourceDir,
         { recursive: true }
