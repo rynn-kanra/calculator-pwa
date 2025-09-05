@@ -1,11 +1,12 @@
 export class AudioService {
     private _context?: AudioContext;
     private _inBuffer?: AudioBuffer;
-    constructor(private _source: string) {
-        this._context = new AudioContext();
+    private _source?: string;
+    constructor(source: string) {
+        this._source = source;
     }
     public async init() {
-        if (this._context) {
+        if (this._context || !this._source) {
             return;
         }
 
@@ -26,4 +27,4 @@ export class AudioService {
     }
 }
 
-export const ClickAudio = new AudioService("assets/audio/click-in.mp3");
+export const ClickAudio = new AudioService("./assets/audio/click-in.mp3");

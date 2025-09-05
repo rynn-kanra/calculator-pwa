@@ -24,6 +24,13 @@ export default function Setting() {
   const [printerType, setPrinterType] = useState(data?.defaultConfig?.printerType);
 
   useEffect(() => {
+    if (setting.lockSetting) {
+      AuthenticationService.authenticate().then(o => {
+        if (!o) {
+          document.startViewTransition(() => route(`/`));
+        }
+      });
+    }
     Promise.all(
       onnx_depedencies.map(o => caches.match(o))
     ).then(os => os.every(p => !!p))
@@ -80,8 +87,13 @@ export default function Setting() {
       downloadTotal: 21_872_216
     });
   };
-  const updateVersion = () => {
+  const updateVersion = async () => {
     hapticFeedback();
+    const p = await Notification.requestPermission();
+    if (p !== "granted") {
+      alert("Permission denied");
+      return
+    }
     navigator.serviceWorker.controller?.postMessage({ action: "UPDATE:CHECK", params: [true] });
   };
 
@@ -372,7 +384,7 @@ export default function Setting() {
               if (newValue === AutoUpdateMode.checkDaily) {
                 const isSuccess = await PushService.subscribe();
                 if (!isSuccess) {
-                  throw new Error("Permssion denied");
+                  throw new Error("Permission denied");
                 }
               }
               data.autoUpdate = newValue;
