@@ -35,7 +35,7 @@ export interface IGridOption {
     gap?: [number, number];
 }
 export type PrintImageData = {
-    data: ArrayBufferLike;
+    data: ArrayBuffer;
     width: number;
     height: number;
 }

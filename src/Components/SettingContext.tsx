@@ -5,6 +5,7 @@ import LocalDBService from '../Services/LocalDBService';
 import { LocalStorageService } from '../Services/LocalStorageService';
 import { ClickAudio } from '../Services/AudioService';
 import ScreenService from '../Services/ScreenService';
+import { copy } from '../Utility/copy';
 
 const SettingContext = createContext<[CalculatorConfig, Dispatch<StateUpdater<CalculatorConfig>>, () => void]>([] as any);
 // recover old setting
@@ -36,6 +37,7 @@ export function SettingProvider({ children }: any) {
         if (typeof d === "function") {
           d = d(setting);
         }
+        d = copy(new CalculatorConfig(), d, true);
         LocalDBService.set("setting", d);
         setSetting(d);
       },

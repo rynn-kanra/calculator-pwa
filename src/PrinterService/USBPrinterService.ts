@@ -10,11 +10,12 @@ type DeviceProfile = {
     interface: number
 };
 const DEFAULT_PROFILE: DeviceProfile = {
-    vendorId: 0x04b8, // EPSON
+    vendorId: 0x04B8, // EPSON
     configuration: 1,
     interface: 0
 };
 const DEVICE_PROFILES: DeviceProfile[] = [
+    // Caysn
     {
         vendorId: 0x4B43,
         productId: 0x3830,
@@ -107,9 +108,9 @@ const DEVICE_PROFILES: DeviceProfile[] = [
 
 function getDeviceId(device: USBDevice) {
     return JSON.stringify({
-        a: device.serialNumber,
-        b: device.vendorId,
-        c: device.productId
+        sn: device.serialNumber,
+        v: device.vendorId,
+        p: device.productId
     });
 }
 export class USBPrinterService extends ESCPrinterService {
@@ -130,6 +131,17 @@ export class USBPrinterService extends ESCPrinterService {
             }
         }
         else {
+            const filters = DEVICE_PROFILES.map(o => ({
+                vendorId: o.vendorId,
+                productId: o.productId
+            }));
+            if (this.option.usbOption?.vendorId) {
+                filters.push({
+                    vendorId: parseInt(this.option.usbOption?.vendorId, 16),
+                    productId: undefined
+                });
+            }
+
             device = await navigator.usb.requestDevice({
                 filters: DEVICE_PROFILES.map(o => ({
                     vendorId: o.vendorId,
@@ -154,7 +166,8 @@ export class USBPrinterService extends ESCPrinterService {
 
         const interf = device.configuration?.interfaces.find(i => i.interfaceNumber == this._profile?.interface);
         this._connection = interf?.alternate.endpoints.find(e => e.direction == 'out');
-        await device.reset();
+        // NOTE: some device don't allow reset
+        try { await device.reset(); } catch { }
 
         this.device = {
             id: getDeviceId(device),
@@ -167,7 +180,7 @@ export class USBPrinterService extends ESCPrinterService {
             return;
         }
 
-        if (this._connection) {
+        if (this._connection && this.device.usb.opened) {
             return;
         }
 
@@ -179,7 +192,7 @@ export class USBPrinterService extends ESCPrinterService {
 
         const interf = this.device.usb.configuration?.interfaces.find(i => i.interfaceNumber == this._profile!.interface);
         this._connection = interf?.alternate.endpoints.find(e => e.direction == 'out');
-        await this.device.usb.reset();
+        try { await this.device.usb.reset(); } catch { }
         this.resetPrinter();
     }
 
@@ -196,8 +209,8 @@ export class USBPrinterService extends ESCPrinterService {
     }
     declare public device?: IDevice & { usb?: USBDevice };
     declare public option: PrinterConfig;
-    public async execute(command: Uint8Array): Promise<void> {
-        if (!this._connection || !this.device?.usb) {
+    public async execute(command: Uint8Array<ArrayBuffer>): Promise<void> {
+        if (!this._connection || !this.device?.usb || !this.device?.usb?.opened) {
             throw new Error("Device not connected");
         }
 

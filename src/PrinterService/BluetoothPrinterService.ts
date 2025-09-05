@@ -121,7 +121,7 @@ export class BluetoothPrinterService extends ESCPrinterService {
     }
     declare public device?: BluetoothDevice | undefined;
     declare public option: PrinterConfig;
-    public async execute(command: Uint8Array): Promise<void> {
+    public async execute(command: Uint8Array<ArrayBuffer>): Promise<void> {
         const chunkSize = this.option.bluetoothOption!.mtu;
         if (command.length <= chunkSize) {
             await this._connection?.writeValue(command);

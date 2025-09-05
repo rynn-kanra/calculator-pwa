@@ -4,7 +4,8 @@ export enum PrinterType {
   USB = "usb",
   // Socket = "socket",
   // Network = "network", // NOT SUPPORTED
-  Imin_Build_In = "imin"
+  Imin_Build_In = "imin",
+  Debug = "debug"
 }
 export enum ImagePrintMode {
   Rastar = "rastar",
@@ -16,6 +17,10 @@ export enum ImagePrintMode {
 type BluetoothPrinterOptions = {
   mtu: number;  // 20-512, (232) - 20 for safe value but slower
   delayTime?: number;
+};
+type USBPrinterOptions = {
+  delayTime?: number;
+  vendorId?: string;
 };
 
 export class PrinterConfig {
@@ -43,4 +48,5 @@ export class PrinterConfig {
   public dpi: number = 203;
   public serialOption?: SerialOptions;
   public bluetoothOption?: BluetoothPrinterOptions;
+  public usbOption?: USBPrinterOptions;
 };

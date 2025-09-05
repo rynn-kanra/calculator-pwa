@@ -78,3 +78,22 @@ body {
         opacity: 0;
     }
 }
+
+/* Style the dialog box */
+dialog {
+    padding: 1rem;
+    border: none;
+    border-radius: 3px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    background-color: white;
+    transition: opacity 0.3s ease-out;
+    opacity: 0;
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+dialog[open] {
+    opacity: 1;
+}

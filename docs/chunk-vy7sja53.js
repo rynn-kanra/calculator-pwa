@@ -1,0 +1,2 @@
+import{w as t}from"./chunk-6n5ync4c.js";class a{async register(){try{let e=await t.getRegisterOption(),r=await navigator.credentials.create({publicKey:e});return await t.register(r),!0}catch(e){return!1}}async authenticate(){try{let e=await t.getAuthenticationOption(),r=await navigator.credentials.get({publicKey:e,mediation:"optional"});return await t.authenticate(r),!0}catch(e){return!1}}async isRegistered(){try{return!!(await t.getUser())?.id}catch(e){return!1}}}var i=new a,c=i;var o={printer:void 0},u=o;
+export{c as q,u as r};

@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { AutoUpdateMode, CalculatorConfig } from "./Model/CalculatorConfig";
+import { AutoUpdateMode } from "./Model/CalculatorConfig";
 import DownloadService from "./Services/DownloadService";
 import IdentityService from "./Services/IdentityService";
 import LocalDBService, { VersionData } from "./Services/LocalDBService";
