@@ -12,7 +12,7 @@ const OCR = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isCameraOn, setCameraOn] = useState<boolean>(false);
   const [image, setImage] = useState<string | null>(null);
-  const [setting,, hapticFeedback] = useSetting();
+  const [setting, , hapticFeedback] = useSetting();
 
   // Define box dimensions (in % relative to video)
   const box = {
@@ -181,7 +181,7 @@ const OCR = () => {
 
     if (video && canvas) {
       hapticFeedback();
-      
+
       const videoRect = video.getBoundingClientRect();
       const videoAspect = video.videoWidth / video.videoHeight;
       const visibleAspect = videoRect.width / videoRect.height;
@@ -244,6 +244,7 @@ const OCR = () => {
     });
   };
 
+  const edgeSize = Math.round(Math.min(box.width * window.innerWidth, box.height * window.innerHeight) * 0.1);
   return (
     <div style={{ height: '100dvh', width: "100dvw", position: "relative", viewTransitionName: "view-scale" }}>
       <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -257,8 +258,8 @@ const OCR = () => {
       }} />
 
       {/* Capture Box Overlay */}
-      {isCameraOn && (<div
-        style={{
+      {isCameraOn && (<>
+        <div style={{
           position: 'absolute',
           background: 'rgba(0, 0, 0, 0.4)',
           left: 0,
@@ -271,8 +272,52 @@ const OCR = () => {
             0% 0%,
             ${box.x * 100}% ${box.y * 100}%, ${box.x * 100}% ${(box.y + box.height) * 100}%, ${(box.x + box.width) * 100}% ${(box.y + box.height) * 100}%, ${(box.x + box.width) * 100}% ${box.y * 100}%, ${box.x * 100}% ${box.y * 100}%
           )`
-        }}
-      />)}
+        }}></div>
+        <div style={{
+          position: "absolute",
+          width: `${edgeSize}px`,
+          height: `${edgeSize}px`,
+          borderWidth: "3px",
+          borderColor: "#f44336",
+          top: `calc(${box.y * 100}% - 2px)`,
+          left: `calc(${box.x * 100}% - 2px)`,
+          borderStyle: "solid none none solid",
+          transition: "border-color 0.3s ease"
+        }} />
+        <div style={{
+          position: "absolute",
+          width: `${edgeSize}px`,
+          height: `${edgeSize}px`,
+          borderWidth: "3px",
+          borderColor: "#f44336",
+          top: `calc(${box.y * 100}% - 2px)`,
+          left: `calc(${(box.x + box.width) * 100}% - ${(edgeSize - 3 + 1)}px)`,
+          borderStyle: "solid solid none none",
+          transition: "border-color 0.3s ease"
+        }} />
+        <div style={{
+          position: "absolute",
+          width: `${edgeSize}px`,
+          height: `${edgeSize}px`,
+          borderWidth: "3px",
+          borderColor: "#f44336",
+          top: `calc(${(box.y + box.height) * 100}% - ${(edgeSize - 3 + 1)}px)`,
+          left: `calc(${(box.x + box.width) * 100}% - ${(edgeSize - 3 + 1)}px)`,
+          borderStyle: "none solid solid none",
+          transition: "border-color 0.3s ease"
+        }} />
+        <div style={{
+          position: "absolute",
+          width: `${edgeSize}px`,
+          height: `${edgeSize}px`,
+          borderWidth: "3px",
+          borderColor: "#f44336",
+          top: `calc(${(box.y + box.height) * 100}% - ${(edgeSize - 3 + 1)}px)`,
+          left: `calc(${box.x * 100}% - 2px)`,
+          borderStyle: "none none solid solid",
+          transition: "border-color 0.3s ease"
+        }} />
+      </>)}
 
       {image && (
         <div style={{ height: '100%', position: "absolute", top: 0 }}>

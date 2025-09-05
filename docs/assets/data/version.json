@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "assets": [
     "./assets/images/icon.192.png",
     "./assets/images/icon.512.png",
@@ -11,7 +11,7 @@
     "./",
     "./manifest.json",
     "./ASR-ax6c4b2e.chunk.js",
-    "./BarcodeScanner-w2a5mk7d.chunk.js",
+    "./BarcodeScanner-ne0vvbnz.chunk.js",
     "./Calculator-tbaantze.chunk.js",
     "./Check-q3ez4w31.chunk.js",
     "./index-24ehtw5m.chunk.js",
@@ -26,7 +26,7 @@
     "./index-xgpjjsk1.chunk.js",
     "./index.css",
     "./index.js",
-    "./OCR-kmmcp9r2.chunk.js",
-    "./Setting-yh9af162.chunk.js"
+    "./OCR-6ayc1g7h.chunk.js",
+    "./Setting-4ztrjb9y.chunk.js"
   ]
 }
