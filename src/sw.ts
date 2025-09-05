@@ -44,6 +44,22 @@ const installVersion = async (version: VersionData, isFull: boolean = false) => 
     })()));
     await Promise.all(fetchFiles);
     await LocalDBService.set("version", version);
+    await deleteOldCache(version);
+}
+const deleteOldCache = async (version: VersionData) => {
+    const cache = await caches.open(CACHE_NAME);
+    const appPathes = version.app_files.map(o => new URL(o, sw.location.href).pathname?.toLowerCase());
+    const keys = await cache.keys();
+    const deletes = keys.map(async key => {
+        const url = new URL(key.url);
+        const path = url?.pathname?.toLowerCase();
+        if ((!path.includes(".chunk.") && !path.includes("chunk-")) || appPathes.includes(path)) {
+            return;
+        }
+
+        await cache.delete(key);
+    });
+    await Promise.all(deletes);
 }
 
 const checkUpdate = async () => {
@@ -174,6 +190,7 @@ sw.addEventListener('push', (event) => {
     executeAction(data);
 });
 
+let silentCleanTO: number;
 sw.addEventListener('fetch', (event) => {
     let request = event.request;
     const requestUrl = new URL(request.url);
@@ -213,16 +230,27 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
+    if (!request.destination) {
+        return;
+    }
+
     if (requestUrl.origin !== self.origin) {
         return;
     }
 
+    let modifyRequest = false;
+    if (requestUrl.pathname === "/index.html") {
+        modifyRequest = true;
+        requestUrl.pathname = "/";
+    }
     if (requestUrl.searchParams.has("sw")) {
         requestUrl.searchParams.delete("sw");
+        modifyRequest = true;
+    }
+    if (modifyRequest) {
         request = new Request(requestUrl.toString(), {
             method: request.method,
             headers: request.headers,
-            mode: request.mode,
             credentials: request.credentials,
             redirect: request.redirect,
             referrer: request.referrer,
@@ -253,7 +281,7 @@ sw.addEventListener('fetch', (event) => {
                 let requireFetch = !cachedResponse;
                 if (!requireFetch && setting.autoUpdate == AutoUpdateMode.silent) {
                     const version = await LocalDBService.get("version");
-                    requireFetch = version?.app_files?.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase());
+                    requireFetch = version?.app_files?.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase()) == true;
                 }
                 if (requireFetch) {
                     // Otherwise fetch from network
@@ -265,12 +293,29 @@ sw.addEventListener('fetch', (event) => {
                     };
                     if (setting.autoUpdate == AutoUpdateMode.silent) {
                         reqOption.cache = "no-cache";
+                        if (cachedResponse) {
+                            const eTag = cachedResponse.headers.get("ETag");
+                            if (eTag) {
+                                reqOption.headers = {
+                                    "If-None-Match": eTag
+                                };
+                            }
+                        }
                     }
                     freshResponse = fetch(request, reqOption).then(response => {
                         if (response.type == "basic" && response.status == 200) {
                             // update cache with latest version
                             const reponseClone = response.clone();
                             caches.open(CACHE_NAME).then(cache => cache.put(request, reponseClone));
+                            if (cachedResponse) {
+                                clearTimeout(silentCleanTO);
+                                silentCleanTO = setTimeout(() => {
+                                    getLatestVersion().then(async version => {
+                                        await LocalDBService.set("version", version);
+                                        await deleteOldCache(version);
+                                    });
+                                }, 1000) as unknown as number;
+                            }
                         }
 
                         return response;

@@ -18,7 +18,6 @@ const sourceDir = "./src";
 const versionFile = "./docs/assets/data/version.json";
 const defaultAppFiles = [
     "./",
-    "./index.html",
     "./manifest.json"
 ];
 const buildConfig = {
@@ -26,6 +25,9 @@ const buildConfig = {
     outdir: './docs',
     splitting: true,
     minify: !isDev,
+    naming: {
+        chunk: '[name]-[hash].chunk.[ext]',
+    },
     drop: isDev ? [] : ["console", "debugger"]
 };
 
@@ -63,7 +65,9 @@ async function updateVersion() {
 
     // Step 3: Update JSON content based on filenames
     // For example: add a key for each script
-    json.version = (json.version || "1.0.0").split('.').map((v, i) => i == 2 ? Number(v) + 1 : v).join('.')
+    if (!isDev) {
+        json.version = (json.version || "1.0.0").split('.').map((v, i) => i == 2 ? Number(v) + 1 : v).join('.')
+    }
     json.app_files = defaultAppFiles.concat(jsFiles.map(o => `./${o}`));
 
     // Step 4: Write updated JSON back to file
@@ -187,6 +191,7 @@ else {
             try {
                 await clean();
                 await run();
+                await updateVersion();
                 console.log("✅ build done.");
             }
             catch (err) {
