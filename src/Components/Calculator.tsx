@@ -181,12 +181,15 @@ export default function Calculator() {
     if (!shared.printer) {
       if (setting.defaultConfig.autoConnect) {
         (async () => {
-          for (const id in setting.printerConfig) {
-            const printerConfig = setting.printerConfig[id];
-            if (printerConfig?.autoConnect != true) {
-              continue;
-            }
-            const isConnected = await requestPrinter(id);
+          const configs = Object.keys(setting.printerConfig)
+            .map(o => ({
+              id: o,
+              config: setting.printerConfig[o]
+            }))
+            .filter(o => o.config?.autoConnect === true)
+            .sort((a, b) => (b.config.printerType === setting.defaultConfig.printerType ? 1 : 0) - (a.config.printerType === setting.defaultConfig.printerType ? 1 : 0));
+          for (const config of configs) {
+            const isConnected = await requestPrinter(config.id);
             if (isConnected) break;
           }
         })();
