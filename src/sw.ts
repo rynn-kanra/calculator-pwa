@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { AutoUpdateMode, CalculatorConfig } from "./Model/CalculatorConfig";
+import { AutoUpdateMode } from "./Model/CalculatorConfig";
 import DownloadService from "./Services/DownloadService";
 import IdentityService from "./Services/IdentityService";
 import LocalDBService, { VersionData } from "./Services/LocalDBService";
@@ -44,6 +44,22 @@ const installVersion = async (version: VersionData, isFull: boolean = false) => 
     })()));
     await Promise.all(fetchFiles);
     await LocalDBService.set("version", version);
+    await deleteOldCache(version);
+}
+const deleteOldCache = async (version: VersionData) => {
+    const cache = await caches.open(CACHE_NAME);
+    const appPathes = version.app_files.map(o => new URL(o, sw.location.href).pathname?.toLowerCase());
+    const keys = await cache.keys();
+    const deletes = keys.map(async key => {
+        const url = new URL(key.url);
+        const path = url?.pathname?.toLowerCase();
+        if ((!path.includes(".chunk.") && !path.includes("chunk-")) || appPathes.includes(path)) {
+            return;
+        }
+
+        await cache.delete(key);
+    });
+    await Promise.all(deletes);
 }
 
 const checkUpdate = async () => {
@@ -174,12 +190,14 @@ sw.addEventListener('push', (event) => {
     executeAction(data);
 });
 
+let silentCleanTO: number;
 sw.addEventListener('fetch', (event) => {
-    const requestUrl = new URL(event.request.url);
+    let request = event.request;
+    const requestUrl = new URL(request.url);
 
-    if (requestUrl.pathname === '/' && event.request.method === 'POST') {
+    if (requestUrl.pathname === '/' && request.method === 'POST') {
         event.respondWith((async () => {
-            const formData = await event.request.formData();
+            const formData = await request.formData();
 
             const sharedTitle = formData.get('title');
             const sharedText = formData.get('text');
@@ -208,7 +226,11 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
-    if (event.request.method !== 'GET') {
+    if (request.method !== 'GET') {
+        return;
+    }
+
+    if (!request.destination) {
         return;
     }
 
@@ -216,40 +238,83 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
+    let modifyRequest = false;
+    if (requestUrl.pathname === "/index.html") {
+        modifyRequest = true;
+        requestUrl.pathname = "/";
+    }
+    if (requestUrl.searchParams.has("sw")) {
+        requestUrl.searchParams.delete("sw");
+        modifyRequest = true;
+    }
+    if (modifyRequest) {
+        request = new Request(requestUrl.toString(), {
+            method: request.method,
+            headers: request.headers,
+            credentials: request.credentials,
+            redirect: request.redirect,
+            referrer: request.referrer,
+            referrerPolicy: request.referrerPolicy,
+            integrity: request.integrity,
+            cache: request.cache
+        });
+    }
+
     // always use cache for other files
     event.respondWith(
         LocalDBService.get("setting").then(setting => {
             if (setting.autoUpdate == AutoUpdateMode.alwaysOnline) {
-                return fetch(event.request, { cache: "no-cache" }).then(response => {
-                    if (response.type == "basic") {
-                        if (response.status == 200) {
-                            // update cache with latest version
-                            const reponseClone = response.clone();
-                            caches.open(CACHE_NAME).then(cache => cache.put(event.request, reponseClone));
-                        }
+                console.log(request.url);
+                return fetch(request, { cache: "no-cache" }).then(response => {
+                    if (response.type == "basic" && response.status == 200) {
+                        // update cache with latest version
+                        const reponseClone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(request, reponseClone));
                     }
 
                     return response;
                 });
             }
 
-            return caches.match(event.request).then(async cachedResponse => {
+            return caches.match(request).then(async cachedResponse => {
                 let freshResponse: Promise<Response> | undefined = undefined;
                 let requireFetch = !cachedResponse;
                 if (!requireFetch && setting.autoUpdate == AutoUpdateMode.silent) {
                     const version = await LocalDBService.get("version");
-                    requireFetch = version?.app_files?.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase());
+                    requireFetch = version?.app_files?.some(o => requestUrl.pathname?.toLowerCase() == new URL(o, sw.location.href).pathname?.toLowerCase()) == true;
                 }
                 if (requireFetch) {
                     // Otherwise fetch from network
                     const controller = new AbortController();
-                    const t = setTimeout(() => controller.abort(), 5000);
-                    freshResponse = fetch(event.request, { cache: "no-cache", signal: controller.signal }).then(response => {
-                        if (response.type == "basic") {
-                            if (response.status == 200) {
-                                // update cache with latest version
-                                const reponseClone = response.clone();
-                                caches.open(CACHE_NAME).then(cache => cache.put(event.request, reponseClone));
+                    const t = setTimeout(() => controller.abort(), 2000);
+                    console.log(request.url);
+                    const reqOption: RequestInit = {
+                        signal: controller.signal
+                    };
+                    if (setting.autoUpdate == AutoUpdateMode.silent) {
+                        reqOption.cache = "no-cache";
+                        if (cachedResponse) {
+                            const eTag = cachedResponse.headers.get("ETag");
+                            if (eTag) {
+                                reqOption.headers = {
+                                    "If-None-Match": eTag
+                                };
+                            }
+                        }
+                    }
+                    freshResponse = fetch(request, reqOption).then(response => {
+                        if (response.type == "basic" && response.status == 200) {
+                            // update cache with latest version
+                            const reponseClone = response.clone();
+                            caches.open(CACHE_NAME).then(cache => cache.put(request, reponseClone));
+                            if (cachedResponse) {
+                                clearTimeout(silentCleanTO);
+                                silentCleanTO = setTimeout(() => {
+                                    getLatestVersion().then(async version => {
+                                        await LocalDBService.set("version", version);
+                                        await deleteOldCache(version);
+                                    });
+                                }, 1000) as unknown as number;
                             }
                         }
 

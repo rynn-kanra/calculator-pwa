@@ -37,7 +37,6 @@ body {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
-    user-zoom: initial;
     height: 100dvh;
     overflow: hidden;
     overscroll-behavior-y: contain;
@@ -77,4 +76,22 @@ body {
         transform: scale(1.5);
         opacity: 0;
     }
+}
+
+/* Style the dialog box */
+dialog {
+    padding: 1rem;
+    border: none;
+    border-radius: 3px;
+    background-color: white;
+    transition: opacity 0.3s ease-out;
+    opacity: 0;
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+dialog[open] {
+    opacity: 1;
 }

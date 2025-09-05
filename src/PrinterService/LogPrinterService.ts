@@ -24,7 +24,7 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
     }
 
     public init(): Promise<void> {
-        this.device = { id: "", name: "console" };
+        this.device = { id: "console", name: "CONSOLE" };
         return resolvedPromise;
     }
     public connect(): Promise<void> {

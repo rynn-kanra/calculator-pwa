@@ -4,7 +4,6 @@ import { CalcParser } from '../Services/MathLanguageParser';
 import { Circle, FileImage, X } from 'lucide-preact';
 import { route } from 'preact-router';
 import { useSetting } from './SettingContext';
-import { ClickAudio } from '../Services/AudioService';
 
 const ocrService = new GutenyeOCRService();
 const OCR = () => {

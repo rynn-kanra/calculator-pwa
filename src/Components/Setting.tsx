@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { AutoUpdateMode, CalculatorConfig, Layout0 } from '../Model/CalculatorConfig';
+import { AutoUpdateMode, Layout0 } from '../Model/CalculatorConfig';
 import { ImagePrintMode, PrinterType } from '../Model/PrinterConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
@@ -10,6 +10,7 @@ import PushService from '../Services/PushService';
 import { useSetting } from './SettingContext';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { route } from 'preact-router';
+import shared from "../Services/Shared";
 
 let ocrService: OCRServiceBase;
 const onnx_depedencies = ["./workers/ort-wasm-simd-threaded.jsep.wasm"];
@@ -39,7 +40,7 @@ export default function Setting() {
     if (!ocrService) {
       ocrService = new GutenyeOCRService();
     }
-    
+
     Promise.all(
       ocrService.depedencies.map(o => caches.match(o))
     ).then(os => os.every(p => !!p))
@@ -106,8 +107,15 @@ export default function Setting() {
         case PrinterType.Bluetooth: {
           if (!o.bluetoothOption) {
             o.bluetoothOption = {
-              mtu: 50
+              mtu: 50,
+              delayTime: 0
             };
+          }
+          break;
+        }
+        case PrinterType.USB: {
+          if (!o.usbOption) {
+            o.usbOption = {};
           }
           break;
         }
@@ -134,7 +142,9 @@ export default function Setting() {
               gridTemplateColumns: '2fr 1fr',
               gap: '1rem 0.5rem',
             }}>
-            <div>Tipe printer</div>
+            <div>Tipe printer
+                {o.printerType === PrinterType.USB && (<div style={{ color: "#888", fontSize: "0.8em" }}>(zadig.exe - change usb driver to WinUSB)</div>)}
+            </div>
             <div>
               <select class='form' disabled={!isDefault} value={o.printerType} onInput={(e) => { o.printerType = e.currentTarget.value as PrinterType; setPrinterType(o.printerType) }}>
                 {Object.entries(PrinterType).map(([name, value]) => (<option value={value}>{name.replaceAll('_', ' ')}</option>))}
@@ -154,13 +164,13 @@ export default function Setting() {
             </div>
             <div>Ukuran kertas</div>
             <div>
-              <select class='form' value={data.defaultConfig.paperWidth} onInput={(e) => { data.defaultConfig.paperWidth = parseInt(e.currentTarget.value); }}>
+              <select class='form' value={o.paperWidth} onInput={(e) => { o.paperWidth = parseInt(e.currentTarget.value); }}>
                 {[58, 80].map(o => (<option value={o}>{o}mm</option>))}
               </select>
             </div>
             <div>DPI</div>
             <div>
-              <select class='form' value={data.defaultConfig.dpi} onInput={(e) => { data.defaultConfig.dpi = parseInt(e.currentTarget.value); }}>
+              <select class='form' value={o.dpi} onInput={(e) => { o.dpi = parseInt(e.currentTarget.value); }}>
                 {[203, 300, 600, 1200, 2400, 4800].map(o => (<option value={o}>{o}</option>))}
               </select>
             </div>
@@ -196,12 +206,31 @@ export default function Setting() {
                 <span class="slider"></span>
               </label>
             </div>
+            {o.printerType == PrinterType.USB && (
+              <>
+                <div style={{ gridColumn: 'span 2', textTransform: "uppercase", fontWeight: "bold" }}>Setting USB</div>
+                <div>VendorId
+                  <div style={{ color: "#888", fontSize: "0.8em" }}>(check driver or manual)</div>
+                </div>
+                <div>
+                  <input class='form' type='text' name="vendor" value={o.usbOption!.vendorId} onInput={(e) => { o.usbOption!.vendorId = e.currentTarget.value; }} />
+                </div>
+                <div>Waktu delay</div>
+                <div>
+                  <input class='form' type='number' name="delay" step="10" min="0" max="1000" value={o.bluetoothOption!.delayTime} onInput={(e) => { o.bluetoothOption!.delayTime = Math.max(parseInt(e.currentTarget.value), 0); }} />
+                </div>
+              </>
+            )}
             {o.printerType == PrinterType.Bluetooth && (
               <>
                 <div style={{ gridColumn: 'span 2', textTransform: "uppercase", fontWeight: "bold" }}>Setting Bluetooth</div>
                 <div>MTU (Maximum Transmision Unit)</div>
                 <div>
                   <input class='form' type='number' name="max-digit" step="10" min="20" max="512" value={o.bluetoothOption!.mtu} onInput={(e) => { o.bluetoothOption!.mtu = Math.max(parseInt(e.currentTarget.value), 20); }} />
+                </div>
+                <div>Waktu delay</div>
+                <div>
+                  <input class='form' type='number' name="delay" step="10" min="0" max="1000" value={o.bluetoothOption!.delayTime} onInput={(e) => { o.bluetoothOption!.delayTime = Math.max(parseInt(e.currentTarget.value), 0); }} />
                 </div>
               </>
             )}
@@ -375,7 +404,7 @@ export default function Setting() {
           gridColumn: "span 2"
         }}>
           <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>SETTING PRINTER</h4>
-          <TabView tabs={printerSettings}></TabView>
+          <TabView tabs={printerSettings} initialIndex={Math.max(0, Object.keys(data.printerConfig).indexOf(shared.printer?.device?.id || "") + 1)}></TabView>
         </div>
         <div style={{
           gridColumn: "span 2"

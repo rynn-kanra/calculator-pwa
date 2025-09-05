@@ -26,6 +26,7 @@ const OCR = lazy(() => import('./Components/OCR'));
 const Check = lazy(() => import('./Components/Check'));
 const Setting = lazy(() => import('./Components/Setting'));
 const ASR = lazy(() => import('./Components/ASR'));
+const BarcodeScanner = lazy(() => import('./Components/BarcodeScanner'));
 
 export default function App() {
     const isDark = isDarkTheme();
@@ -45,6 +46,7 @@ export default function App() {
                     <Route path="/check" component={Check} />
                     <Route path="/setting" component={Setting} />
                     <Route path="/asr" component={ASR} />
+                    <Route path="/barcode" component={BarcodeScanner} />
                 </Router>
             </Suspense>
         </SettingProvider>

@@ -6,6 +6,7 @@ import { IminPrinterService } from '../PrinterService/IminPrinterService';
 import { FontMode, IPrinterService, TextAlign, TextStyle } from '../PrinterService/IPrinterService';
 import { LogPrinterService } from '../PrinterService/LogPrinterService';
 import { SerialPrinterService } from '../PrinterService/SerialPrinterService';
+import { WebSocketPrinterService } from '../PrinterService/WebSocketPrinterService';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { IOCRService } from '../Services/OCR/OCRService';
 import { DeepPartial } from '../Utility/DeepPartial';
@@ -17,6 +18,7 @@ import { route } from 'preact-router';
 import { ArchiveRestore, Camera, Delete, Printer, PrinterCheck, ReceiptText } from 'lucide-preact';
 import type { JSX } from 'preact/jsx-runtime';
 import { useSetting } from './SettingContext';
+import shared from "../Services/Shared";
 
 const exps: [string, number][] = [];
 let temp: string = "";
@@ -26,15 +28,13 @@ let input: string = "";
 let listenKeyboard = true;
 
 let ocrService: IOCRService;
-let printer: IPrinterService | undefined;
-
-(globalThis as any).printer = printer;
+shared.printer = undefined;
 export default function Calculator() {
   const [setting, setSetting, hapticFeedback] = useSetting();
   const [isOCRReady, setOCRReady] = useState(false);
   const [isCheckView, openCheckView] = useState(false);
   const clickRef = useRef((a: string) => { });
-  const [printerStatus, setPrinterStatus] = useState<'offline' | 'online' | 'inactive'>('offline');
+  const [printerStatus, setPrinterStatus] = useState<'offline' | 'online' | 'inactive'>(shared.printer ? 'online' : 'offline');
   const [showAC, setShowAC] = useState(true);
   const [operator, setOperator] = useState('');
   const [display, setDisplay] = useState('');
@@ -90,14 +90,21 @@ export default function Calculator() {
           printerCtor = USBPrinterService;
           break;
         }
+        case PrinterType.WebSocket: {
+          printerCtor = WebSocketPrinterService;
+          break;
+        }
         case PrinterType.Imin_Build_In: {
           printerCtor = IminPrinterService;
           break;
         }
-        case PrinterType.Bluetooth:
-        default: {
+        case PrinterType.Bluetooth: {
           printerCtor = BluetoothPrinterService;
           break;
+        }
+        case PrinterType.Debug:
+        default: {
+          printerCtor = LogPrinterService;
         }
       }
       const d = new printerCtor(printerConfig, {
@@ -111,11 +118,11 @@ export default function Calculator() {
       await d.init(id);
       setting.apply(d);
       setSetting(setting);
-      if (printer) {
-        printer.dispose();
+      if (shared.printer) {
+        shared.printer.dispose();
       }
-      printer = d;
-      (globalThis as any).printer = printer;
+      shared.printer = d;
+      (globalThis as any).printer = shared.printer;
       setPrinterStatus("online");
       return true;
     }
@@ -171,24 +178,27 @@ export default function Calculator() {
     if (!setting || buttons.indexOf('⎙') === -1)
       return;
 
-    if (!printer) {
-      printer = new LogPrinterService(setting.defaultConfig);
-      printer.init();
-      setting.apply(printer);
+    if (!shared.printer) {
+      if (setting.defaultConfig.autoConnect) {
+        (async () => {
+          const configs = Object.keys(setting.printerConfig)
+            .map(o => ({
+              id: o,
+              config: setting.printerConfig[o]
+            }))
+            .filter(o => o.config?.autoConnect === true)
+            .sort((a, b) => (b.config.printerType === setting.defaultConfig.printerType ? 1 : 0) - (a.config.printerType === setting.defaultConfig.printerType ? 1 : 0));
+          for (const config of configs) {
+            const isConnected = await requestPrinter(config.id);
+            if (isConnected) break;
+          }
+        })();
+      }
+    }
+    else {
+      setting.apply(shared.printer);
     }
 
-    if (setting.defaultConfig.autoConnect && (printer instanceof LogPrinterService)) {
-      (async () => {
-        for (const id in setting.printerConfig) {
-          const printerConfig = setting.printerConfig[id];
-          if (printerConfig?.autoConnect != true) {
-            continue;
-          }
-          const isConnected = await requestPrinter(id);
-          if (isConnected) break;
-        }
-      })();
-    }
   }, [setting]);
 
   const addResult = function (text: string, num: number) {
@@ -205,10 +215,10 @@ export default function Calculator() {
     const index = exps.indexOf(exp);
     if (index === 0) {
       if (setting.deviceName) {
-        printer?.printLine(setting.deviceName, {
+        shared.printer?.printLine(setting.deviceName, {
           align: TextAlign.center
         });
-        printer?.feed(printer.option.fontSize * 0.5);
+        shared.printer?.feed(shared.printer.option.fontSize * 0.5);
       }
     }
 
@@ -219,11 +229,11 @@ export default function Calculator() {
     }
     const isMult = isMultExp(text);
     if (isMult && index > 0 && !isMultExp(exps[index - 1][0])) {
-      printer?.feed(printer.option.fontSize * 0.5);
+      shared.printer?.feed(shared.printer.option.fontSize * 0.5);
     }
 
     if (setting.printOperator) {
-      printer?.printGrid({
+      shared.printer?.printGrid({
         columns: [{
           width: 1
         }, {
@@ -233,13 +243,13 @@ export default function Calculator() {
       }, [[text, isMult ? '' : '+']]);
     }
     else {
-      printer?.printLine(text);
+      shared.printer?.printLine(text);
     }
 
     if (isMult) {
       let multSumText = "=" + formatNumber(sum || 0);
       if (setting.printOperator) {
-        printer?.printGrid({
+        shared.printer?.printGrid({
           columns: [{
             width: 1
           }, {
@@ -249,10 +259,10 @@ export default function Calculator() {
         }, [[multSumText, '+']]);
       }
       else {
-        printer?.printLine(multSumText);
+        shared.printer?.printLine(multSumText);
       }
 
-      printer?.feed(printer.option.fontSize * 0.5);
+      shared.printer?.feed(shared.printer.option.fontSize * 0.5);
     }
   }
   const numberFormat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: setting.maxDecimal });
@@ -310,10 +320,10 @@ export default function Calculator() {
           print(exp);
           result += exp[1];
         }
-        printer?.printSeparator("-");
+        shared.printer?.printSeparator("-");
         let resultText = formatNumber(result);
         if (setting.printOperator) {
-          printer?.printGrid({
+          shared.printer?.printGrid({
             columns: [{
               width: 1,
               font: { fontStyle: FontMode.bold }
@@ -325,13 +335,13 @@ export default function Calculator() {
           }, [[resultText, '∗']]);
         }
         else {
-          printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
+          shared.printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
         }
-        printer?.lineFeed(1);
-        printer?.printSeparator("=");
-        printer?.lineFeed(1);
-        if (printer?.option.sharePrinter) {
-          printer?.pause();
+        shared.printer?.lineFeed(1);
+        shared.printer?.printSeparator("=");
+        shared.printer?.lineFeed(1);
+        if (shared.printer?.option.sharePrinter) {
+          shared.printer?.pause();
         }
         break;
       }
@@ -340,8 +350,8 @@ export default function Calculator() {
           return;
         }
 
-        if (printer) {
-          printer?.lineFeed();
+        if (shared.printer) {
+          shared.printer?.lineFeed();
         }
         break;
       }
@@ -360,8 +370,8 @@ export default function Calculator() {
         setCheckIndex(exps.length);
         setOperator("");
         setShowAC(true);
-        if (printerStatus === "online" && printer?.option.sharePrinter) {
-          printer?.pause();
+        if (printerStatus === "online" && shared.printer?.option.sharePrinter) {
+          shared.printer?.pause();
         }
         break;
       }
@@ -380,10 +390,10 @@ export default function Calculator() {
         if (ncheckIndex >= exps.length && exps.length > 0) {
           temp = tempDisplay = input = "";
           if (printerStatus === "online") {
-            printer?.printSeparator("-");
+            shared.printer?.printSeparator("-");
             let resultText = formatNumber(resultNumb);
             if (setting.printOperator) {
-              printer?.printGrid({
+              shared.printer?.printGrid({
                 columns: [{
                   width: 1,
                   font: { fontStyle: FontMode.bold }
@@ -395,12 +405,12 @@ export default function Calculator() {
               }, [[resultText, '∗']]);
             }
             else {
-              printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
+              shared.printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
             }
-            printer?.printSeparator("=");
-            printer?.lineFeed(1);
-            if (printer?.option.sharePrinter) {
-              printer?.pause();
+            shared.printer?.printSeparator("=");
+            shared.printer?.lineFeed(1);
+            if (shared.printer?.option.sharePrinter) {
+              shared.printer?.pause();
             }
           }
         }
@@ -891,9 +901,9 @@ export default function Calculator() {
                 onClick: () => clickRef.current(b),
                 onHold: () => {
                   hapticFeedback();
-                  if (printer) {
-                    const d = printer;
-                    printer = undefined;
+                  if (shared.printer) {
+                    const d = shared.printer;
+                    shared.printer = undefined;
                     d.disconnect();
                     setPrinterStatus('offline');
                   }

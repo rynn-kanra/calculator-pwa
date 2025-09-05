@@ -21,7 +21,7 @@ export default function ASR() {
   useEffect(() => {
     let audioContext: AudioContext;
     let analyser: AnalyserNode;
-    let dataArray: Uint8Array;
+    let dataArray: Uint8Array<ArrayBuffer>;
     let source;
     let worker: Worker;
     let intervalId: number | undefined;
