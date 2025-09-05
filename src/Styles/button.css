@@ -37,7 +37,6 @@ body {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
-    user-zoom: initial;
     height: 100dvh;
     overflow: hidden;
     overscroll-behavior-y: contain;
@@ -84,7 +83,6 @@ dialog {
     padding: 1rem;
     border: none;
     border-radius: 3px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     background-color: white;
     transition: opacity 0.3s ease-out;
     opacity: 0;

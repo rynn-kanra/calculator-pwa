@@ -175,11 +175,12 @@ sw.addEventListener('push', (event) => {
 });
 
 sw.addEventListener('fetch', (event) => {
-    const requestUrl = new URL(event.request.url);
+    let request = event.request;
+    const requestUrl = new URL(request.url);
 
-    if (requestUrl.pathname === '/' && event.request.method === 'POST') {
+    if (requestUrl.pathname === '/' && request.method === 'POST') {
         event.respondWith((async () => {
-            const formData = await event.request.formData();
+            const formData = await request.formData();
 
             const sharedTitle = formData.get('title');
             const sharedText = formData.get('text');
@@ -208,7 +209,7 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
-    if (event.request.method !== 'GET') {
+    if (request.method !== 'GET') {
         return;
     }
 
@@ -216,24 +217,38 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
+    if (requestUrl.searchParams.has("sw")) {
+        requestUrl.searchParams.delete("sw");
+        request = new Request(requestUrl.toString(), {
+            method: request.method,
+            headers: request.headers,
+            mode: request.mode,
+            credentials: request.credentials,
+            redirect: request.redirect,
+            referrer: request.referrer,
+            referrerPolicy: request.referrerPolicy,
+            integrity: request.integrity,
+            cache: request.cache
+        });
+    }
+
     // always use cache for other files
     event.respondWith(
         LocalDBService.get("setting").then(setting => {
             if (setting.autoUpdate == AutoUpdateMode.alwaysOnline) {
-                return fetch(event.request, { cache: "no-cache" }).then(response => {
-                    if (response.type == "basic") {
-                        if (response.status == 200) {
-                            // update cache with latest version
-                            const reponseClone = response.clone();
-                            caches.open(CACHE_NAME).then(cache => cache.put(event.request, reponseClone));
-                        }
+                console.log(request.url);
+                return fetch(request, { cache: "no-cache" }).then(response => {
+                    if (response.type == "basic" && response.status == 200) {
+                        // update cache with latest version
+                        const reponseClone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(request, reponseClone));
                     }
 
                     return response;
                 });
             }
 
-            return caches.match(event.request).then(async cachedResponse => {
+            return caches.match(request).then(async cachedResponse => {
                 let freshResponse: Promise<Response> | undefined = undefined;
                 let requireFetch = !cachedResponse;
                 if (!requireFetch && setting.autoUpdate == AutoUpdateMode.silent) {
@@ -243,14 +258,19 @@ sw.addEventListener('fetch', (event) => {
                 if (requireFetch) {
                     // Otherwise fetch from network
                     const controller = new AbortController();
-                    const t = setTimeout(() => controller.abort(), 5000);
-                    freshResponse = fetch(event.request, { cache: "no-cache", signal: controller.signal }).then(response => {
-                        if (response.type == "basic") {
-                            if (response.status == 200) {
-                                // update cache with latest version
-                                const reponseClone = response.clone();
-                                caches.open(CACHE_NAME).then(cache => cache.put(event.request, reponseClone));
-                            }
+                    const t = setTimeout(() => controller.abort(), 2000);
+                    console.log(request.url);
+                    const reqOption: RequestInit = {
+                        signal: controller.signal
+                    };
+                    if (setting.autoUpdate == AutoUpdateMode.silent) {
+                        reqOption.cache = "no-cache";
+                    }
+                    freshResponse = fetch(request, reqOption).then(response => {
+                        if (response.type == "basic" && response.status == 200) {
+                            // update cache with latest version
+                            const reponseClone = response.clone();
+                            caches.open(CACHE_NAME).then(cache => cache.put(request, reponseClone));
                         }
 
                         return response;

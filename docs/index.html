@@ -4,30 +4,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="description"
+    content="Printer Calculator is a lightweight App that lets you perform calculations and instantly print results using a thermal printer.\n\nThe app is itself a Progressive Web App which means it can be installed to the home screen of your mobile device or to your desktop." />
+  <title>PWA Calculator</title>
   <link rel="manifest" href="manifest.json?v=1.0.1" />
   <!-- <meta name="color-scheme" content="light dark" /> -->
-  <meta name="theme-color" content="#ffffff" />
   <link rel="icon" href="assets/images/icon.192.png" type="image/png" />
   <link rel="apple-touch-icon" href="assets/images/icon.512.png" />
-  <link rel="stylesheet" href="index.css?v=1.0.1" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="description" content="Printer Calculator is a lightweight App that lets you perform calculations and instantly print results using a thermal printer.\n\nThe app is itself a Progressive Web App which means it can be installed to the home screen of your mobile device or to your desktop." />
-  <title>PWA Calculator</title>
-  <style>
-  </style>
-  <script>
-    document.addEventListener('gesturestart', (e) => e.preventDefault());
-    document.addEventListener('gesturechange', (e) => e.preventDefault());
-    document.addEventListener('gestureend', (e) => e.preventDefault());
-  </script>
-</head>
-
-<body>
-  <div id="app" style="overflow:hidden"></div>
-  <script src="index.js" type="module"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
+      (async () => {
         try {
           const registration = await navigator.serviceWorker.register('./sw.js', {
             type: 'module',
@@ -41,13 +29,40 @@
           } else if (registration.active) {
             console.log("Service worker active");
           }
+
+          if (!navigator.serviceWorker.controller) {
+            console.log('SW registered but not controlling — reloading...');
+            location.reload();
+          }
         }
         catch (error) {
           console.error(`Registration failed with ${error}`);
         }
-      });
+      })();
     }
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('link');
+      style.rel = 'stylesheet';
+      style.href = `./index.css?sw=${Date.now()}`;
+      style.async = true;
+      document.head.appendChild(style);
+
+      const script = document.createElement('script');
+      script.src = `./index.js?sw=${Date.now()}`;
+      script.type = 'module';
+      script.async = true;
+      document.body.appendChild(script);
+    });
   </script>
+  <script>
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('gesturechange', (e) => e.preventDefault());
+    document.addEventListener('gestureend', (e) => e.preventDefault());
+  </script>
+</head>
+
+<body>
+  <div id="app" style="overflow:hidden"></div>
 </body>
 
 </html>
