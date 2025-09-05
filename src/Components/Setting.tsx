@@ -414,6 +414,12 @@ export default function Setting() {
           {!isONNXReady && (<button class="btn" onClick={downloadONNX}>Download ONNX Runtime</button>)}
           {!isOCRReady && (<button class="btn" onClick={downloadOCR}>Download OCR Dependencies</button>)}
         </div>
+        <div style={{
+          gridColumn: "span 2"
+        }}>
+          <h4 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>TOOLS</h4>
+          <button class="btn" onClick={() => document.startViewTransition(() => route("/barcode"))}>Barcode Scanner</button>
+        </div>
       </div>
     </div>
   </div>);

@@ -123,8 +123,10 @@ const BarcodeScanner = () => {
     navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: "environment",
-        width: { ideal: window.innerWidth * window.devicePixelRatio },
-        height: { ideal: window.innerHeight * window.devicePixelRatio }
+        zoom: {
+          ideal: 1
+        },
+        focusMode: "continuous"
       }
     })
       .then(stream => {
@@ -232,10 +234,10 @@ const BarcodeScanner = () => {
         transition: "border-color 0.3s ease"
       }} />
 
-      <dialog ref={modalRef} style={{ margin: "0 auto", top: `${(box.y + box.height / 3) * 100}%` }}>
+      <dialog ref={modalRef} style={{ margin: "0 auto", top: `${(box.y + box.height / 4) * 100}%`, maxWidth: `${(box.width - 0.1) * 100}%` }}>
         <div>
-          <p style={{ margin: 0 }}>FORMAT: {result?.format}</p>
-          <p style={{ margin: 0 }}>{result?.rawValue}</p>
+          <p style={{ margin: 0, textTransform: "uppercase" }}>FORMAT: {result?.format}</p>
+          <p style={{ margin: 0, overflowWrap: "break-word" }}>{result?.rawValue}</p>
         </div>
         <div style={{ textAlign: "right", marginTop: '1rem' }}>
           <button class="btn-small" style={{ color: "white", backgroundColor: "#4caf50", borderColor: "#4caf50", margin: 0 }} onClick={onContinue}>CONTINUE</button>
