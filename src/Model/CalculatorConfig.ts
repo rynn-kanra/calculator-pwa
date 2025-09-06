@@ -13,6 +13,11 @@ export enum AutoUpdateMode {
   never,
   alwaysOnline
 }
+export enum OCREngine {
+  none,
+  web,
+  gutenye
+}
 
 export class CalculatorConfig {
   public maxDecimal: number = 8;
@@ -25,6 +30,7 @@ export class CalculatorConfig {
   public vibrate: boolean = true;
   public sound: boolean = true;
   public layout0: Layout0 = Layout0.mode1;
+  public ocrEngine: OCREngine = OCREngine.none;
   public autoUpdate: AutoUpdateMode = AutoUpdateMode.silent;
   public defaultConfig: PrinterConfig = new PrinterConfig();
   public printerConfig: { [key: string]: PrinterConfig } = {};

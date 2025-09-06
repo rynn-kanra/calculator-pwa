@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { AutoUpdateMode, Layout0 } from '../Model/CalculatorConfig';
+import { AutoUpdateMode, Layout0, OCREngine } from '../Model/CalculatorConfig';
 import { ImagePrintMode, PrinterType } from '../Model/PrinterConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
@@ -11,25 +11,57 @@ import { useSetting } from './SettingContext';
 import { GutenyeOCRService } from '../Services/OCR/GutenyeOCRService';
 import { route } from 'preact-router';
 import shared from "../Services/Shared";
+import { WebOCRService } from '../Services/OCR/WebOCRService';
+import ScreenService from '../Services/ScreenService';
+import type { EventSubscription } from '../Utility/eventHandler';
 
 let ocrService: OCRServiceBase;
 const onnx_depedencies = ["./workers/ort-wasm-simd-threaded.jsep.wasm"];
 export default function Setting() {
   const [setting, setSetting, hapticFeedback] = useSetting();
-
   const [isOCRReady, setOCRReady] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
   const [isONNXReady, setONNXReady] = useState(true);
   const [data, setData] = useState(structuredClone(setting));
   const [printerSettings, setPrinterSettings] = useState([] as Tab[]);
   const [printerType, setPrinterType] = useState(data?.defaultConfig?.printerType);
 
   useEffect(() => {
+    let idleListener: EventSubscription<IdleDetector, Event>;
     if (setting.lockSetting) {
-      AuthenticationService.authenticate().then(o => {
-        if (!o) {
-          document.startViewTransition(() => route(`/`));
+      (async () => {
+        const authorize = async () => {
+          return AuthenticationService.authenticate().then(o => {
+            setAuthorized(o);
+            if (!o) {
+              document.startViewTransition(() => route(`/`));
+            }
+
+            return o;
+          });
         }
-      });
+        const a = await authorize();
+        if (!a) {
+          return;
+        }
+
+        let requireAuthenticate = false;
+        idleListener = await ScreenService.idleEvent();
+        idleListener.subscribe((e) => {
+          const t = e.currentTarget;
+          if (t.screenState === "locked" || t.userState === "idle") {
+            requireAuthenticate = true;
+            setAuthorized(false);
+          }
+          else if (requireAuthenticate) {
+            requireAuthenticate = false;
+            authorize();
+          }
+        });
+      })();
+    }
+    else {
+      setAuthorized(true);
     }
     Promise.all(
       onnx_depedencies.map(o => caches.match(o))
@@ -37,8 +69,17 @@ export default function Setting() {
       .then(o => {
         setONNXReady(o);
       });
-    if (!ocrService) {
-      ocrService = new GutenyeOCRService();
+
+    switch (setting.ocrEngine) {
+      case OCREngine.web: {
+        ocrService = new WebOCRService();
+        break;
+      }
+      case OCREngine.gutenye:
+      default: {
+        ocrService = new GutenyeOCRService();
+        break;
+      }
     }
 
     Promise.all(
@@ -47,6 +88,10 @@ export default function Setting() {
       .then(o => {
         setOCRReady(o);
       });
+
+    return () => {
+      idleListener?.unsubscribe();
+    };
   }, []);
 
   const onCancel = () => {
@@ -143,7 +188,7 @@ export default function Setting() {
               gap: '1rem 0.5rem',
             }}>
             <div>Tipe printer
-                {o.printerType === PrinterType.USB && (<div style={{ color: "#888", fontSize: "0.8em" }}>(zadig.exe - change usb driver to WinUSB)</div>)}
+              {o.printerType === PrinterType.USB && (<div style={{ color: "#888", fontSize: "0.8em" }}>(zadig.exe - change usb driver to WinUSB)</div>)}
             </div>
             <div>
               <select class='form' disabled={!isDefault} value={o.printerType} onInput={(e) => { o.printerType = e.currentTarget.value as PrinterType; setPrinterType(o.printerType) }}>
@@ -274,7 +319,7 @@ export default function Setting() {
     setPrinterSettings(printerSettings);
   }, [data, printerType]);
 
-  return (<div style={{ height: '100dvh', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0 0', boxSizing: "border-box", viewTransitionName: "view-scale" }}>
+  return (<div style={{ height: '100dvh', visibility: authorized ? '' : 'hidden', fontSize: '1rem', backgroundColor: '#f0f0f0', padding: '1rem 0 0', boxSizing: "border-box", viewTransitionName: "view-scale" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: "1rem", margin: "0 1rem 1rem 1rem" }}>
       <div>
         <button class="btn-small" style={{ color: "slategrey", margin: 0 }} onClick={onCancel}>CANCEL</button>
@@ -344,6 +389,7 @@ export default function Setting() {
                       isRegistered = await AuthenticationService.register();
                     }
                     el.checked = isRegistered;
+                    await IdleDetector.requestPermission();
                   }
 
                   data.lockSetting = el.checked;
@@ -398,6 +444,12 @@ export default function Setting() {
             <option value={AutoUpdateMode.checkDaily}>Cek setiap hari</option>
             <option value={AutoUpdateMode.never}>Manual</option>
             <option value={AutoUpdateMode.alwaysOnline}>Selalu Online</option>
+          </select>
+        </div>
+        <div>OCR Engine</div>
+        <div class="input-container">
+          <select class='form' name="ocr-engine" value={data.ocrEngine} onInput={(e) => data.ocrEngine = parseInt(e.currentTarget.value)}>
+            {Object.entries(OCREngine).filter(([, value]) => value !== OCREngine.none && typeof value === "number").map(([name, value]) => (<option value={value}>{name.replaceAll('_', ' ').toLocaleUpperCase()}</option>))}
           </select>
         </div>
         <div style={{

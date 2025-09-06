@@ -13,12 +13,12 @@ import { DeepPartial } from '../Utility/DeepPartial';
 import { useLongPress } from '../Utility/useLongPress';
 import BottomPopup from './BottomPopup';
 import { USBPrinterService } from '../PrinterService/USBPrinterService';
-import AuthenticationService from '../Services/AuthenticationService';
 import { route } from 'preact-router';
 import { ArchiveRestore, Camera, Delete, Printer, PrinterCheck, ReceiptText } from 'lucide-preact';
 import type { JSX } from 'preact/jsx-runtime';
 import { useSetting } from './SettingContext';
 import shared from "../Services/Shared";
+import ScreenService from '../Services/ScreenService';
 
 const exps: [string, number][] = [];
 let temp: string = "";
@@ -199,6 +199,16 @@ export default function Calculator() {
       setting.apply(shared.printer);
     }
 
+    if (setting.keepScreenAwake !== false) {
+      ScreenService.wakeLock();
+    }
+    else {
+      ScreenService.releaseWakeLock();
+    }
+
+    return () => {
+      ScreenService.releaseWakeLock();
+    };
   }, [setting]);
 
   const addResult = function (text: string, num: number) {

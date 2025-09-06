@@ -31,6 +31,9 @@ const BarcodeScanner = lazy(() => import('./Components/BarcodeScanner'));
 export default function App() {
     const isDark = isDarkTheme();
     useEffect(() => {
+        ScreenService.orientiationLock("portrait-primary");
+    }, []);
+    useEffect(() => {
         const themeColorMeta = document.querySelector('meta[name="theme-color"]');
         if (themeColorMeta) {
             themeColorMeta.setAttribute("content", isDark ? "#121212" : "#ffffff");

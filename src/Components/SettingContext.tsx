@@ -1,10 +1,9 @@
 import { createContext } from 'preact';
 import { Dispatch, StateUpdater, useContext, useEffect, useState } from 'preact/hooks';
-import { CalculatorConfig } from '../Model/CalculatorConfig';
+import { CalculatorConfig, OCREngine } from '../Model/CalculatorConfig';
 import LocalDBService from '../Services/LocalDBService';
 import { LocalStorageService } from '../Services/LocalStorageService';
 import { ClickAudio } from '../Services/AudioService';
-import ScreenService from '../Services/ScreenService';
 import { copy } from '../Utility/copy';
 
 const SettingContext = createContext<[CalculatorConfig, Dispatch<StateUpdater<CalculatorConfig>>, () => void]>([] as any);
@@ -16,6 +15,9 @@ if (oldsetting) {
   settingService.delete();
 }
 const st = await LocalDBService.get("setting");
+if (!st.ocrEngine) {
+  st.ocrEngine = "TextDetector" in window ? OCREngine.web : OCREngine.gutenye;
+}
 
 export function SettingProvider({ children }: any) {
   const [setting, setSetting] = useState<CalculatorConfig>(st);
@@ -26,9 +28,6 @@ export function SettingProvider({ children }: any) {
         await ClickAudio.init();
       }
     })();
-    if (setting.keepScreenAwake !== false) {
-      ScreenService.keepScreenAwake();
-    }
   }, [setting]);
   return (
     <SettingContext.Provider value={[
@@ -47,10 +46,10 @@ export function SettingProvider({ children }: any) {
             navigator.vibrate?.(30); // vibrate for 30 milliseconds
           } catch { }
         }
-  
+
         if (setting.sound) {
           ClickAudio.play();
-        }    
+        }
       }
     ]}>
       {children}
