@@ -42,7 +42,7 @@ const BarcodeScanner = () => {
     }
 
     let animationFrame: number;
-    const detector = new window.BarcodeDetector();
+    const detector = new BarcodeDetector();
     const detectBarcode = async () => {
       let continueDetect = true;
       try {

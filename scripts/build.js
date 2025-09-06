@@ -111,6 +111,7 @@ if (isDev) {
             ".ttf": "font/ttf",
             ".otf": "font/otf",
             ".txt": "text/plain",
+            ".wasm": "application/wasm",
         }[path.slice(path.lastIndexOf("."))] || "application/octet-stream";
     }
     function generateETag(buffer) {

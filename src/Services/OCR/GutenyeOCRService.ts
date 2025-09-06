@@ -4,7 +4,6 @@ import { loadDefault } from "../../Utility/loadModule";
 
 export class GutenyeOCRService extends OCRServiceBase {
     private _engine?: Ocr;
-    private _canvas?: OffscreenCanvas;
 
     public override depedencies: string[] = [
         "./workers/gutenye.js",
@@ -45,37 +44,5 @@ export class GutenyeOCRService extends OCRServiceBase {
         } finally {
             URL.revokeObjectURL(blobUrl);
         }
-    }
-    async resize(input: Blob, maxSize = 960): Promise<Blob> {
-        if (!this._canvas) {
-            this._canvas = new OffscreenCanvas(0, 0);
-        }
-        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const img = new Image();
-            const url = URL.createObjectURL(input);
-            img.onload = () => {
-                URL.revokeObjectURL(url);
-                resolve(img);
-            };
-            img.onerror = (e) => {
-                URL.revokeObjectURL(url);
-                reject(e);
-            };
-            img.src = url;
-        });
-
-        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1); // only downscale
-        if (scale >= 1) {
-            return input;
-        }
-
-        this._canvas.width = Math.round(img.width * scale);
-        this._canvas.height = Math.round(img.height * scale);
-        const ctx = this._canvas.getContext('2d')!;
-        ctx.drawImage(img, 0, 0, this._canvas.width, this._canvas.height);
-        return await this._canvas.convertToBlob({
-            type: 'image/webp',
-            quality: 0.8
-        });
     }
 }

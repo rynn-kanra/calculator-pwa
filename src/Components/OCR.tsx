@@ -4,8 +4,11 @@ import { CalcParser } from '../Services/MathLanguageParser';
 import { Circle, FileImage, X } from 'lucide-preact';
 import { route } from 'preact-router';
 import { useSetting } from './SettingContext';
+import { WebOCRService } from '../Services/OCR/WebOCRService';
+import { OCREngine } from '../Model/CalculatorConfig';
+import { OCRServiceBase } from '../Services/OCR/OCRService';
 
-const ocrService = new GutenyeOCRService();
+let ocrService: OCRServiceBase;
 const OCR = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -31,6 +34,18 @@ const OCR = () => {
           processImage(file);
         }
       });
+    }
+
+    switch (setting.ocrEngine) {
+      case OCREngine.web: {
+        ocrService = new WebOCRService();
+        break;
+      }
+      case OCREngine.gutenye:
+      default: {
+        ocrService = new GutenyeOCRService();
+        break;
+      }
     }
 
     const params = new URLSearchParams(window.location.hash.split('?')[1]);
@@ -76,8 +91,8 @@ const OCR = () => {
     navigator.serviceWorker.addEventListener('message', messageHandler);
     return () => {
       navigator.serviceWorker.removeEventListener('message', messageHandler);
+      stopVideo();
     };
-
   }, []);
 
   useEffect(() => {
@@ -112,7 +127,8 @@ const OCR = () => {
     try {
       videoRef.current?.pause();
       let text = await ocrService.recognize(file);
-
+      console.log("RAW OCR:");
+      console.log(text);
       if (true) {
         const replaceMap = new Map<RegExp, string>([
           [/([0-9])[B&](?=[0-9])/g, '$18'],
@@ -133,6 +149,7 @@ const OCR = () => {
           [/([^50])(?=00$)/g, '$10'],
         ]);
         let ds = text.split('\n').map(o => {
+          o = o.replaceAll(/([0-9]) (?=[.,][0-9.,]*$)/ig, "$1");
           const ix = o.lastIndexOf(' ');
           return ix === -1 ? o : o.substring(ix + 1);
         }).map(o => {
@@ -155,9 +172,13 @@ const OCR = () => {
         }
 
         text = ds.join(' ');
+        console.log("CLEANED TEXT:");
+        console.log(text);
       }
 
       let commands = CalcParser(text);
+      console.log("CALC COMMAND");
+      console.log(commands);
       if (!commands) {
         throw new Error("no numbers");
       }
@@ -169,8 +190,6 @@ const OCR = () => {
     }
     catch (e) {
       alert(e);
-    }
-    finally {
       videoRef.current?.play();
     }
   }
