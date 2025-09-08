@@ -1,0 +1,97 @@
+.press-button {
+    background: #fff;
+    transition: all 0.05s ease-in-out;
+}
+
+.press-button:active {
+    background: #eee;
+}
+
+.press-button:focus-visible {
+    outline: none;
+}
+
+.press-button:disabled {
+    background: #eee;
+    opacity: 0.5;
+}
+
+.no-scroll-ui::-webkit-scrollbar {
+    display: none;
+}
+
+.result-container::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari */
+}
+
+div:focus {
+    outline: none;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior-y: contain;
+    overscroll-behavior: none;
+    font-family: sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+::view-transition-new(view-scale) {
+    animation: view-scale-in 0.3s forwards;
+}
+
+::view-transition-old(view-scale) {
+    animation: view-scale-out 0.3s forwards;
+}
+
+@keyframes view-scale-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes view-scale-out {
+    from {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    to {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* Style the dialog box */
+dialog {
+    padding: 1rem;
+    border: none;
+    border-radius: 3px;
+    background-color: white;
+    transition: opacity 0.3s ease-out;
+    opacity: 0;
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+dialog[open] {
+    opacity: 1;
+}

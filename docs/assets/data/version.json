@@ -1,0 +1,33 @@
+{
+  "version": "1.0.6",
+  "assets": [
+    "./assets/images/icon.192.png",
+    "./assets/images/icon.512.png",
+    "./assets/images/camera.png",
+    "./assets/images/comment-dots.png",
+    "./assets/audio/click-in.mp3"
+  ],
+  "app_files": [
+    "./",
+    "./manifest.json",
+    "./ASR-ayzdhcbx.chunk.js",
+    "./BarcodeScanner-kkgphfrf.chunk.js",
+    "./Calculator-4s985fkq.chunk.js",
+    "./Check-5pr5tvg2.chunk.js",
+    "./index-284e53d0.chunk.js",
+    "./index-59yp0mn7.chunk.js",
+    "./index-cdh8mtxq.chunk.js",
+    "./index-h7cmj924.chunk.js",
+    "./index-j86cbgms.chunk.js",
+    "./index-pehnjj2g.chunk.js",
+    "./index-pw7dt2ac.chunk.js",
+    "./index-qt0cmpn8.chunk.js",
+    "./index-rf7tqq63.chunk.js",
+    "./index-wj4h4tw5.chunk.js",
+    "./index-yqzjxm9d.chunk.js",
+    "./index.css",
+    "./index.js",
+    "./OCR-s5gmsprt.chunk.js",
+    "./Setting-ske9zt4e.chunk.js"
+  ]
+}

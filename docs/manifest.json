@@ -1,0 +1,151 @@
+{
+  "name": "Printer Calculator",
+  "short_name": "Print Calc",
+  "description": "Printer Calculator is a lightweight App that lets you perform calculations and instantly print results using a thermal printer.\n\nThe app is itself a Progressive Web App which means it can be installed to the home screen of your mobile device or to your desktop.",
+  "id": "print-calc",
+  "start_url": ".",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": [
+    "standalone",
+    "tabbed",
+    "window-controls-overlay"
+  ],
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "tab_strip": {
+    "new_tab_button": {
+      "url": "./"
+    }
+  },
+  "orientation": "portrait",
+  "dir": "ltr",
+  "lang": "id-ID",
+  "categories": [
+    "education",
+    "utilities",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "./assets/images/icon.192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/images/icon.192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./assets/images/icon.512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/images/icon.512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./assets/images/screenshots/shot1.png",
+      "sizes": "400x822",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "./assets/images/screenshots/shot2.png",
+      "sizes": "400x822",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "./assets/images/screenshots/shot3.png",
+      "sizes": "400x822",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "./assets/images/screenshots/shot4.png",
+      "sizes": "400x822",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Scan gambar",
+      "short_name": "Scan gambar",
+      "url": "./#/ocr",
+      "icons": [{ "src": "./assets/images/camera.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Pengenalan ucapan",
+      "short_name": "Pengenalan ucapan",
+      "url": "./#/asr",
+      "icons": [{ "src": "./assets/images/comment-dots.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "share_target": {
+    "action": "./",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "image",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  },
+  "edge_side_panel": {
+    "preferred_width": 480
+  },
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": [
+      "navigate-existing",
+      "auto"
+    ]
+  },
+  "file_handlers": [
+    {
+      "action": "./#/ocr?open=image",
+      "accept": {
+        "image/png": [
+          ".png"
+        ],
+        "image/jpeg": [
+          ".jpg",
+          ".jpeg"
+        ],
+        "image/webp": [
+          ".webp"
+        ]
+      },
+      "icons": [
+        {
+          "src": "./assets/images/icon.192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    }
+  ],
+  "protocol_handlers": [],
+  "widgets": [],
+  "scope_extensions": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
