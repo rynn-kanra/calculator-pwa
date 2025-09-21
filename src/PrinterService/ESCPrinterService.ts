@@ -273,7 +273,7 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
                         if (col.font) {
                             cmds.push(this.fontStyle(col.font));
                         }
-                        
+
                         if (colGap && i > 0) {
                             text = colGap + text;
                         }
@@ -300,6 +300,10 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
     public printBarcode(data: string, option?: DeepPartial<DataMatrixOption>): void;
     public printBarcode(data: string, option?: DeepPartial<Barcode1DOption>): void;
     public printBarcode(data: string, option?: DeepPartial<Barcode1DOption | Barcode2DOption>) {
+        if (this.option.barcodeAsImage) {
+            return super.printBarcode(data, option);
+        }
+
         const type = option?.type ?? BarcodeType.CODE128;
         this.enqueue(Promise.resolve(data).then(data => {
             const bit = toUtf8(data);
