@@ -1,5 +1,5 @@
 import { transfer } from "comlink";
-import CanvasWorkerService from "../CanvasWorkerService";
+import WorkerService from "../WorkerService";
 
 export interface IOCRService {
     depedencies: string[];
@@ -34,6 +34,6 @@ export abstract class OCRServiceBase implements IOCRService {
         });
     }
     protected resize(input: Blob, maxSize = 960): Promise<Blob> {
-        return CanvasWorkerService.resize(transfer(input, [input]), maxSize);
+        return WorkerService.canvas.resize(transfer(input, [input]), maxSize);
     }
 }
