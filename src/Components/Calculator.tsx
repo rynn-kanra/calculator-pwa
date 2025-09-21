@@ -249,7 +249,7 @@ export default function Calculator() {
         }, {
           align: TextAlign.right
         }],
-        gap: [0, 5]
+        gap: [0, 1]
       });
     }
     else {
@@ -265,7 +265,7 @@ export default function Calculator() {
           }, {
             align: TextAlign.right
           }],
-          gap: [0, 5]
+          gap: [0, 1]
         });
       }
       else {
@@ -341,7 +341,7 @@ export default function Calculator() {
               align: TextAlign.right,
               font: { fontStyle: FontMode.bold }
             }],
-            gap: [0, 5]
+            gap: [0, 1]
           });
         }
         else {
@@ -411,7 +411,7 @@ export default function Calculator() {
                   align: TextAlign.right,
                   font: { fontStyle: FontMode.bold }
                 }],
-                gap: [0, 5]
+                gap: [0, 1]
               });
             }
             else {

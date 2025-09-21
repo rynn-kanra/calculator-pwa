@@ -46,11 +46,11 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
         const p = Promise.resolve(text).then<MessageLog>(text => {
             switch (textStyle?.align) {
                 case TextAlign.right: {
-                    text = text.padStart(50);
+                    text = text.padStart(this.option.charPerLine);
                     break;
                 }
                 case TextAlign.center: {
-                    text = ' '.repeat((50 - text.length) / 2) + text;
+                    text = ' '.repeat((this.option.charPerLine - text.length) / 2) + text;
                     break;
                 }
             }
@@ -67,7 +67,7 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
         }
 
         this.enqueue({
-            message: separator.padStart(50, separator)
+            message: separator.padStart(this.option.charPerLine, separator)
         });
     }
 
@@ -149,7 +149,7 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
             while (columns.length < data[0].length) {
                 columns.push({ width: +columnDefined });
             }
-            const totalGaps = (data[0].length - 1) * (option.gap?.[0] ?? 0);
+            const totalGaps = (data[0].length - 1) * (option.gap?.[1] ?? 0);
             let availableWidth = this.option.charPerLine - totalGaps;
             let autoWidths: number[] = [];
             let partCount = columns.reduce((res, column, ix) => {
@@ -175,9 +175,9 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
                 availableWidth -= rw * fontSize;
                 return rw;
             });
-            const colGap = " ".repeat((option.gap?.[0] ?? 0) / charWidth);
+            const colGap = " ".repeat((option.gap?.[1] ?? 0) / charWidth);
             let ix = 0;
-            const rowGap = option.gap?.[1];
+            const rowGap = option.gap?.[0];
             let rowCount = data.length;
             let message = "";
             while (ix < rowCount) {

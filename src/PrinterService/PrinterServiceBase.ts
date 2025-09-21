@@ -189,10 +189,9 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
             const gridStyle = [
                 'display:grid',
                 `grid-template-columns: ${columns.map(o => o.width ? `${o.width}fr` : 'auto').join(" ")}`,
-                `gap: ${(option.gap?.[0] ?? 0)}px ${(option.gap?.[1] ?? 0)}px`,
+                `gap: ${(option.gap?.[0] ?? 0)}em ${(option.gap?.[1] ?? 0)}em`,
                 `line-height: ${this.currentStyle.lineHeight}`,
-                `font-family: sans-serif`,
-                ``
+                `font-family: sans-serif`
             ];
             const styles = columns.map(o => {
                 const textStyle = copy(o, this.currentStyle);

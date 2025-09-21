@@ -211,7 +211,7 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
             while (columns.length < data[0].length) {
                 columns.push({ width: +columnDefined });
             }
-            const totalGaps = (data[0].length - 1) * (option.gap?.[0] ?? 0);
+            const totalGaps = (data[0].length - 1) * (option.gap?.[1] ?? 0);
             let availableWidth = this.option.charPerLine - totalGaps;
             let autoWidths: number[] = [];
             let partCount = columns.reduce((res, column, ix) => {
@@ -237,9 +237,9 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
                 availableWidth -= rw * fontSize;
                 return rw;
             });
-            const colGap = " ".repeat((option.gap?.[0] ?? 0) / charWidth);
+            const colGap = " ".repeat((option.gap?.[1] ?? 0) / charWidth);
             let ix = 0;
-            const rowGap = option.gap?.[1];
+            const rowGap = option.gap?.[0];
             let rowCount = data.length;
             const cmds: Uint8Array[] = [];
             while (ix < rowCount) {

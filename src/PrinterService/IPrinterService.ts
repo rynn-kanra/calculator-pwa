@@ -32,6 +32,7 @@ export type ColumnOption = {
 } & DeepPartial<TextStyle>;
 export interface IGridOption {
     columns?: ColumnOption[];
+    // grid gap: row, column
     gap?: [number, number];
 }
 export type PrintImageData = {
