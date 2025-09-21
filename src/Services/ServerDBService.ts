@@ -3,8 +3,8 @@ import { DB_NAME } from '../Utility/config';
 import { IndexedDBService } from './IndexedDBService';
 export interface User {
     id: string,
-    credId: Uint8Array,
-    publicKey: Uint8Array
+    credId: Uint8Array<ArrayBuffer>,
+    publicKey: Uint8Array<ArrayBuffer>
 }
 interface Context extends idb.DBSchema {
     users: {

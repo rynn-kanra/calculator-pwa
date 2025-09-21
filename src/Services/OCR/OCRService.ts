@@ -1,3 +1,5 @@
+import { transfer } from "comlink";
+import CanvasWorkerService from "../CanvasWorkerService";
 
 export interface IOCRService {
     depedencies: string[];
@@ -7,7 +9,6 @@ export interface IOCRService {
 }
 
 export abstract class OCRServiceBase implements IOCRService {
-    private _canvas?: OffscreenCanvas;
     private _input?: HTMLInputElement;
     abstract init(): Promise<void>;
     abstract depedencies: string[];
@@ -32,37 +33,7 @@ export abstract class OCRServiceBase implements IOCRService {
             this._input!.click();
         });
     }
-    protected async resize(input: Blob, maxSize = 960): Promise<Blob> {
-        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const img = new Image();
-            const url = URL.createObjectURL(input);
-            img.onload = () => {
-                URL.revokeObjectURL(url);
-                resolve(img);
-            };
-            img.onerror = (e) => {
-                URL.revokeObjectURL(url);
-                reject(e);
-            };
-            img.src = url;
-        });
-
-        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1); // only downscale
-        if (scale >= 1) {
-            return input;
-        }
-
-        if (!this._canvas) {
-            this._canvas = new OffscreenCanvas(0, 0);
-        }
-
-        this._canvas.width = Math.round(img.width * scale);
-        this._canvas.height = Math.round(img.height * scale);
-        const ctx = this._canvas.getContext('2d')!;
-        ctx.drawImage(img, 0, 0, this._canvas.width, this._canvas.height);
-        return await this._canvas.convertToBlob({
-            type: 'image/webp',
-            quality: 0.8
-        });
+    protected resize(input: Blob, maxSize = 960): Promise<Blob> {
+        return CanvasWorkerService.resize(transfer(input, [input]), maxSize);
     }
 }

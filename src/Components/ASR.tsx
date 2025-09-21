@@ -3,14 +3,15 @@ import { SpeechService } from '../Services/SpeechService';
 import { Circle, Pause, Play, Square, X } from 'lucide-preact';
 import { CalcParser } from '../Services/MathLanguageParser';
 import { route } from 'preact-router';
-import { useLongPress } from '../Utility/useLongPress';
 import { useSetting } from './SettingContext';
+import CanvasWorkerService from '../Services/CanvasWorkerService';
+import { transfer } from 'comlink';
 
 let speechService: SpeechService | undefined = undefined;
 
 export default function ASR() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [,,hapticFeedback] = useSetting();
+  const [, , hapticFeedback] = useSetting();
   const visualize = useRef<(p?: boolean) => void>(null);
   const [isReady, setReady] = useState<boolean>(false);
   const [isListening, setListening] = useState<boolean>(false);
@@ -23,19 +24,9 @@ export default function ASR() {
     let analyser: AnalyserNode;
     let dataArray: Uint8Array<ArrayBuffer>;
     let source;
-    let worker: Worker;
     let intervalId: number | undefined;
 
-    const canvas = canvasRef.current!;
-    const offscreen = canvas.transferControlToOffscreen();
-
-    worker = new Worker(new URL('./workers/AudioVisual.js', import.meta.url), {
-      type: 'module'
-    });
-
-    worker.postMessage({ canvas: offscreen }, [offscreen]);
-
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(async stream => {
       speechService = new SpeechService();
       audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       source = audioContext.createMediaStreamSource(stream);
@@ -57,6 +48,9 @@ export default function ASR() {
       };
 
       let isSilent = true;
+
+      const offCanvas = canvasRef.current!.transferControlToOffscreen();
+      const audioVisualizer = await CanvasWorkerService.getAudioVisual(transfer(offCanvas, [offCanvas]));
       visualize.current = (isStart?: boolean) => {
         if (!isStart) {
           if (typeof intervalId !== "number") {
@@ -76,11 +70,11 @@ export default function ASR() {
           analyser.getByteTimeDomainData(dataArray);
           if (isVoiceActive(dataArray)) {
             isSilent = false;
-            worker.postMessage({ audioData: dataArray });
+            audioVisualizer.draw(transfer(dataArray, [dataArray.buffer]));
           }
           else if (!isSilent) {
             isSilent = true;
-            worker.postMessage({ silence: true });
+            audioVisualizer.drawSilent();
           }
         }, 1000 / 15) as unknown as number; // 15 FPS
       };
@@ -93,7 +87,6 @@ export default function ASR() {
     return () => {
       clearInterval(intervalId);
       if (audioContext) audioContext.close();
-      if (worker) worker.terminate();
     };
   }, []);
 

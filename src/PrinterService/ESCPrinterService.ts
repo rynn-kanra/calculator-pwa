@@ -1,8 +1,9 @@
 import { ImagePrintMode, PrinterConfig } from "../Model/PrinterConfig";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { PrinterServiceBase } from "./PrinterServiceBase";
-import { AztecOption, Barcode2DOption, Barcode1DOption, BarcodeTextPosition, BarcodeType, DataMatrixOption, FontMode, FontStyle, PDF417Option, PrintImageData, QRCodeOption, TextAlign, TextStyle } from "./IPrinterService";
+import { AztecOption, Barcode2DOption, Barcode1DOption, BarcodeTextPosition, BarcodeType, DataMatrixOption, FontMode, FontStyle, PDF417Option, PrintImageData, QRCodeOption, TextAlign, TextStyle, IGridOption } from "./IPrinterService";
 import { concat, toUtf8 } from "../Utility/crypto";
+import { Command } from "lucide-preact";
 
 const ESC = 0x1B;
 const GS = 0x1D;
@@ -17,7 +18,7 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
         this.resetPrinter();
         this.textAlign(this.currentStyle.align!);
         this.lineHeight(this.currentStyle.lineHeight!);
-        this.fontStyle(this.currentStyle.font!);
+        this.enqueue(this.fontStyle(this.currentStyle.font!));
     }
 
     protected resetPrinter(): void {
@@ -29,9 +30,7 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
         this.enqueue(new Uint8Array([ESC, 0x61, align]));
         this.currentStyle.align = align;
     }
-    public bold(isActive: boolean = true): void {
-        // ESC E n
-        this.enqueue(new Uint8Array([ESC, 0x45, +isActive]));
+    public bold(isActive: boolean = true): Uint8Array {
         const mode = FontMode.bold;
         if (isActive) {
             this.currentStyle.font!.fontStyle! |= mode;
@@ -39,10 +38,10 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
         else {
             this.currentStyle.font!.fontStyle! &= mode;
         }
+        // ESC E n
+        return new Uint8Array([ESC, 0x45, +isActive])
     }
-    public underline(isActive: boolean = true): void {
-        // ESC - n
-        this.enqueue(new Uint8Array([ESC, 0x2D, +isActive]));
+    public underline(isActive: boolean = true) {
         const mode = FontMode.underline;
         if (isActive) {
             this.currentStyle.font!.fontStyle! |= mode;
@@ -50,10 +49,10 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
         else {
             this.currentStyle.font!.fontStyle! &= mode;
         }
+        // ESC - n
+        return new Uint8Array([ESC, 0x2D, +isActive]);
     }
-    public italic(isActive: boolean = true): void {
-        // ESC 4 n
-        this.enqueue(new Uint8Array([ESC, 0x34, +isActive]));
+    public italic(isActive: boolean = true) {
         const mode = FontMode.italic;
         if (isActive) {
             this.currentStyle.font!.fontStyle! |= mode;
@@ -61,6 +60,8 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
         else {
             this.currentStyle.font!.fontStyle! &= mode;
         }
+        // ESC 4 n
+        return new Uint8Array([ESC, 0x34, +isActive]);
     }
     public cut(isFull: boolean = true): void {
         // GS V n
@@ -79,29 +80,29 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
         // ESC j n
         this.enqueue(new Uint8Array([ESC, 0x6A, pt]));
     }
-    public fontFace(faceId: number = 0): void {
-        // ESC ! n
-        this.enqueue(new Uint8Array([ESC, 0x21, faceId]));
+    public fontFace(faceId: number = 0): Uint8Array {
         this.currentStyle.font!.fontFaceType = faceId;
+        // ESC ! n
+        return new Uint8Array([ESC, 0x21, faceId]);
     }
-    public fontSize(size: number = 0): void {
+    public fontSize(size: number = 0): Uint8Array {
+        size = this.getFontSize(size);
+        const sizeC = size * (16 + 1);
+        // GS ! n
+        this.currentStyle.font!.size = size;
+        return new Uint8Array([GS, 0x21, sizeC]);
+    }
+    protected getFontSize(size: number) {
         const normalSize = 24;
         let d = size / normalSize;
-        let m = 0;
         let t = Math.round(d); // byte = [width][height]. ex hexa: 00 (normal), 11 (2x)
-        if ((d - t) >= 0.5) {
-            m = 1;
-        }
         if (t > 0) {
             t--;
         }
         if (t > 7) {
             t = 7;
         }
-        const sizeC = t * (16 + 1) + m;
-        // GS ! n
-        this.enqueue(new Uint8Array([GS, 0x21, sizeC]));
-        this.currentStyle.font!.size = size;
+        return t;
     }
     public lineHeight(size: number): void {
         const ln = Math.ceil(this.currentStyle.font?.size! * size);
@@ -109,32 +110,31 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
         this.enqueue(new Uint8Array([ESC, 0x33, ln]));
         this.currentStyle.lineHeight = size;
     }
-    protected fontStyle(style: DeepPartial<FontStyle>): void {
+    protected fontStyle(style: DeepPartial<FontStyle>): Uint8Array {
+        const commands: Uint8Array[] = [];
         if (typeof style.fontFaceType == "number") {
-            this.fontFace(style.fontFaceType);
+            commands.push(this.fontFace(style.fontFaceType));
         }
         if (typeof style.size == "number") {
-            this.fontSize(style.size);
+            commands.push(this.fontSize(style.size));
         }
 
-        if (!style.fontStyle) {
-            return;
+        if (style.fontStyle) {
+            commands.push(this.bold(Boolean(style.fontStyle & FontMode.bold)));
+            commands.push(this.italic(Boolean(style.fontStyle & FontMode.italic)));
+            commands.push(this.underline(Boolean(style.fontStyle & FontMode.underline)));
         }
-
-        this.bold(Boolean(style.fontStyle & FontMode.bold));
-        this.italic(Boolean(style.fontStyle & FontMode.italic));
-        this.underline(Boolean(style.fontStyle & FontMode.underline));
+        return concat(...commands);
     }
     public override print(text: string | PromiseLike<string>, fontStyle?: DeepPartial<FontStyle>): void {
         if (this.option.textAsImage) {
             return super.print(text, fontStyle);
         }
 
-        if (fontStyle) {
-            this.fontStyle(fontStyle);
-        }
-
-        this.enqueue(Promise.resolve(text).then(text => toUtf8(text)));
+        const styleCmd = fontStyle ? this.fontStyle(fontStyle) : [];
+        this.enqueue(Promise.resolve(text).then(text => {
+            return concat(styleCmd, toUtf8(text));
+        }));
         if (fontStyle) {
             this.reset();
         }
@@ -193,6 +193,102 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
             }
         }));
     }
+    public printGrid(data: string[][] | PromiseLike<string[][]>, option: IGridOption): void {
+        if (this.option.textAsImage) {
+            return super.printGrid(data, option);
+        }
+        const commandPromise = Promise.resolve(data).then(data => {
+            const charWidth = 1;
+            if (!option) {
+                option = {};
+            }
+            if (!Array.isArray(option.columns)) {
+                option.columns = [];
+            }
+
+            const columns = Array.from(option.columns);
+            const columnDefined = columns.length > 0;
+            while (columns.length < data[0].length) {
+                columns.push({ width: +columnDefined });
+            }
+            const totalGaps = (data[0].length - 1) * (option.gap?.[0] ?? 0);
+            let availableWidth = this.option.charPerLine - totalGaps;
+            let autoWidths: number[] = [];
+            let partCount = columns.reduce((res, column, ix) => {
+                if (!column.width) {
+                    autoWidths.push(data.reduce((r, c) => Math.max(r, c?.[ix]?.length), 0));
+                }
+                return res + (column.width ?? 1);
+            }, 0);
+            const maxAutoWidth = Math.floor(availableWidth / partCount);
+            autoWidths = autoWidths.map(o => Math.min(o, maxAutoWidth));
+            partCount -= autoWidths.length;
+            availableWidth -= autoWidths.reduce((a, b) => a + b, 0);
+            const resolvedWidths = columns.map((o, i) => {
+                const fontSize = 1;
+                let curWidth = 0;
+                if (i === columns.length - 1) {
+                    curWidth = o.width ? availableWidth : availableWidth + autoWidths.shift()!;
+                }
+                else {
+                    curWidth = o.width ? Math.floor(availableWidth * o.width / partCount) : autoWidths.shift()!;
+                }
+                const rw = Math.floor(curWidth / fontSize);
+                availableWidth -= rw * fontSize;
+                return rw;
+            });
+            const colGap = " ".repeat((option.gap?.[0] ?? 0) / charWidth);
+            let ix = 0;
+            const rowGap = option.gap?.[1];
+            let rowCount = data.length;
+            const cmds: Uint8Array[] = [];
+            while (ix < rowCount) {
+                rowGap && ix && cmds.push(new Uint8Array([ESC, 0x64, rowGap]));
+                const row = data[ix++];
+                let hasNextItem = true;
+                let warpCount = 0;
+                while (hasNextItem) {
+                    hasNextItem = false;
+                    for (let i = 0, len = columns.length; i < len; i++) {
+                        const col = columns[0];
+                        const width = resolvedWidths[i];
+                        if (!hasNextItem) {
+                            hasNextItem = (row[i] ?? "").length > (warpCount + 1) * width;
+                        }
+                        let text = (row[i] ?? "").substring(warpCount * width, width);
+                        switch (columns[i].align ?? this.currentStyle.align) {
+                            case TextAlign.right: {
+                                text = text.padStart(width, ' ');
+                                break;
+                            }
+                            case TextAlign.center: {
+                                text = text.padStart(Math.floor(width / 2), ' ').padEnd(Math.ceil(width / 2), ' ');
+                                break;
+                            }
+                            default: {
+                                text = text.padEnd(width, ' ');
+                                break;
+                            }
+                        }
+                        if (col.font) {
+                            cmds.push(this.fontStyle(col.font));
+                        }
+                        
+                        if (colGap && i > 0) {
+                            text = colGap + text;
+                        }
+                        cmds.push(toUtf8(text));
+                    }
+                    cmds.push(toUtf8('\n'));
+                    warpCount++;
+                }
+            }
+
+            return concat(...cmds);
+        });
+
+        this.enqueue(commandPromise);
+    }
     public openCashdrawer(): void {
         const pin: 0 | 1 | 48 | 49 = 48, on: number = 25, off: number = 200;
         // ESC p m t1 t2
@@ -217,7 +313,7 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
                         row: 0,
                         width: 3,
                         height: 3,
-                        correctionLevel: 48,
+                        correctionLevel: 1,
                         truncated: false,
                         ...(option as DeepPartial<PDF417Option>)
                     };
@@ -370,7 +466,7 @@ export abstract class ESCPrinterService extends PrinterServiceBase<Uint8Array> {
 
                     // 1D Barcode
                     let d: number[] = [];
-                    if (setting.textPosition != BarcodeTextPosition.None && typeof setting.textFont === "number") {
+                    if ((setting.textPosition ?? 0) != BarcodeTextPosition.None && typeof setting.textFont === "number") {
                         // GS f n
                         d = [GS, 0x66, setting.textFont];
                     }

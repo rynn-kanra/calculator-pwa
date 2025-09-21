@@ -28,6 +28,9 @@ export class PrinterConfig {
   public get width(): number {
     return Math.ceil(this.printableWidth * this.dpi / 25.4);
   };
+  public get charPerLine(): number {
+    return this.printableWidth / 1.5;
+  };
   public get printableWidth(): number {
     switch (this.paperWidth) {
       case 80: return 72;

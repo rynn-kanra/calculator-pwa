@@ -20,13 +20,25 @@ for (const arg of process.argv.slice(2)) {
 // CONFIG
 const distDir = "./docs";
 const sourceDir = "./src";
+const workerDir = "./src/workers";
 const versionFile = "./docs/assets/data/version.json";
 const defaultAppFiles = [
     "./",
     "./manifest.json"
 ];
+const entryPoints = [
+    `${sourceDir}/index.ts`,
+    `${sourceDir}/sw.ts`
+];
+if (true) {
+    const glob = new Glob('*.ts');
+    const wks = (await Array.fromAsync(glob.scan({ cwd: workerDir })))
+        .map(o => `${workerDir}/${o}`);
+    entryPoints.splice(entryPoints.length, 0, ...wks);
+}
+
 const buildConfig = {
-    entrypoints: ['src/index.ts', 'src/sw.ts', 'src/workers/gutenye.ts', 'src/workers/AudioVisual.ts'],
+    entrypoints: entryPoints,
     outdir: './docs',
     splitting: true,
     minify: !isDev,
