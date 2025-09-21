@@ -4,7 +4,7 @@ import { copy } from "../Utility/copy";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { retry } from "../Utility/retry";
 import { Barcode2DOption, Barcode1DOption, FontMode, FontStyle, IDevice, IGridOption, IPrinterService, PrintImageData, TextAlign, TextStyle, BarcodeType, BarcodeTextPosition, PDF417Option, QRCodeOption, AztecOption, DataMatrixOption } from "./IPrinterService";
-import CanvasWorkerService from "../Services/CanvasWorkerService";
+import WorkerService from "../Services/WorkerService";
 
 export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
@@ -104,7 +104,7 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     public printLine(text: string | PromiseLike<string>, textStyle?: DeepPartial<TextStyle>): void {
         const style = copy(textStyle, this.currentStyle);
         const p = Promise.resolve(text).then<PrintImageData>(async (text) => {
-            const imageData = await CanvasWorkerService.image.drawText(text, this.option.width, style);
+            const imageData = await WorkerService.canvas.image.drawText(text, this.option.width, style);
             return {
                 data: imageData.data.buffer,
                 width: imageData.width,
@@ -116,7 +116,7 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     }
     public printSeparator(separator: string): void {
         const textStyle = this.currentStyle;
-        const imageDataPromise = CanvasWorkerService.image.drawSeparator(separator, this.option.width, textStyle)
+        const imageDataPromise = WorkerService.canvas.image.drawSeparator(separator, this.option.width, textStyle)
             .then(o => ({
                 data: o.data.buffer,
                 height: o.height,
@@ -132,7 +132,7 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     public abstract cut(isFull?: boolean): void;
     public abstract lineFeed(n?: number): void;
     public feed(pt: number = 24): void {
-        const imageDataPromise = CanvasWorkerService.image.drawBlank(pt, this.option.width, this.currentStyle)
+        const imageDataPromise = WorkerService.canvas.image.drawBlank(pt, this.option.width, this.currentStyle)
             .then(o => ({
                 data: o.data.buffer,
                 height: o.height,
@@ -233,7 +233,7 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
 
     public printBarcode(data: string | PromiseLike<string>, option?: DeepPartial<Barcode1DOption | Barcode2DOption>) {
         const imageDataPromise = Promise.resolve(data)
-            .then(o => CanvasWorkerService.image.drawBarcode(o, option))
+            .then(o => WorkerService.canvas.image.drawBarcode(o, option))
             .then(o => ({
                 data: o.data.buffer,
                 height: o.height,

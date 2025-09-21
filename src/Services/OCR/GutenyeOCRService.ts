@@ -1,6 +1,7 @@
 import { OCRServiceBase } from "./OCRService";
+import WorkerService from "../WorkerService";
 import type GutenyeWorker from "../../Workers/GutenyeWorker";
-import { Remote, UnProxyMarked, wrap } from "comlink";
+import type { Remote, UnProxyMarked } from "comlink";
 
 export class GutenyeOCRService extends OCRServiceBase {
     private _engine?: Remote<UnProxyMarked<typeof GutenyeWorker>>;
@@ -16,7 +17,7 @@ export class GutenyeOCRService extends OCRServiceBase {
             return;
         }
 
-        this._engine = wrap<typeof GutenyeWorker>(new Worker("./workers/GutenyeWorker.js", { type: "module" }));
+        this._engine = WorkerService.gutenye;
     }
     async recognize(input: Blob): Promise<string> {
         if (!this._engine) {

@@ -4,7 +4,7 @@ import { Circle, Pause, Play, Square, X } from 'lucide-preact';
 import { CalcParser } from '../Services/MathLanguageParser';
 import { route } from 'preact-router';
 import { useSetting } from './SettingContext';
-import CanvasWorkerService from '../Services/CanvasWorkerService';
+import WorkerService from '../Services/WorkerService';
 import { transfer } from 'comlink';
 
 let speechService: SpeechService | undefined = undefined;
@@ -50,7 +50,7 @@ export default function ASR() {
       let isSilent = true;
 
       const offCanvas = canvasRef.current!.transferControlToOffscreen();
-      const audioVisualizer = await CanvasWorkerService.getAudioVisual(transfer(offCanvas, [offCanvas]));
+      const audioVisualizer = await WorkerService.canvas.getAudioVisual(transfer(offCanvas, [offCanvas]));
       visualize.current = (isStart?: boolean) => {
         if (!isStart) {
           if (typeof intervalId !== "number") {
