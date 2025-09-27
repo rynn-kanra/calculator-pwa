@@ -31,7 +31,8 @@ export type ColumnOption = {
     width?: number;
 } & DeepPartial<TextStyle>;
 export interface IGridOption {
-    columns: ColumnOption[];
+    columns?: ColumnOption[];
+    // grid gap: row, column
     gap?: [number, number];
 }
 export type PrintImageData = {
@@ -129,7 +130,7 @@ export interface IPrinterService {
     printLine(text: string | PromiseLike<string>, style?: DeepPartial<TextStyle>): void;
     printImage(image: PrintImageData | PromiseLike<PrintImageData>): void;
     printHtml(html: string | PromiseLike<string>): void;
-    printGrid(option: IGridOption, data: string[][] | PromiseLike<string[][]>): void;
+    printGrid(data: string[][] | PromiseLike<string[][]>, option?: IGridOption): void;
     openCashdrawer(): void;
     printBarcode(data: string | PromiseLike<string>, option?: DeepPartial<Barcode1DOption | Barcode2DOption>): void;
 }

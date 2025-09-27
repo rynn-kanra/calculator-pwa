@@ -2,7 +2,7 @@ import { PrinterConfig } from "../Model/PrinterConfig";
 import { copy } from "../Utility/copy";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { PrinterServiceBase } from "./PrinterServiceBase";
-import { PrintImageData, TextAlign, TextStyle } from "./IPrinterService";
+import { IGridOption, PrintImageData, TextAlign, TextStyle } from "./IPrinterService";
 
 type MessageLog = {
     message: string,
@@ -46,11 +46,11 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
         const p = Promise.resolve(text).then<MessageLog>(text => {
             switch (textStyle?.align) {
                 case TextAlign.right: {
-                    text = text.padStart(50);
+                    text = text.padStart(this.option.charPerLine);
                     break;
                 }
                 case TextAlign.center: {
-                    text = ' '.repeat((50 - text.length) / 2) + text;
+                    text = ' '.repeat((this.option.charPerLine - text.length) / 2) + text;
                     break;
                 }
             }
@@ -67,7 +67,7 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
         }
 
         this.enqueue({
-            message: separator.padStart(50, separator)
+            message: separator.padStart(this.option.charPerLine, separator)
         });
     }
 
@@ -130,7 +130,100 @@ export class LogPrinterService extends PrinterServiceBase<MessageLog> {
 
         this.enqueue(p);
     }
+    public printGrid(data: string[][] | PromiseLike<string[][]>, option?: IGridOption): void {
+        if (this.option.textAsImage) {
+            return super.printGrid(data, option);
+        }
+
+        const commandPromise = Promise.resolve(data).then(data => {
+            const charWidth = 1;
+            if (!option) {
+                option = {};
+            }
+            if (!Array.isArray(option.columns)) {
+                option.columns = [];
+            }
+
+            const columns = Array.from(option.columns);
+            const columnDefined = columns.length > 0;
+            while (columns.length < data[0].length) {
+                columns.push({ width: +columnDefined });
+            }
+            const totalGaps = (data[0].length - 1) * (option.gap?.[1] ?? 0);
+            let availableWidth = this.option.charPerLine - totalGaps;
+            let autoWidths: number[] = [];
+            let partCount = columns.reduce((res, column, ix) => {
+                if (!column.width) {
+                    autoWidths.push(data.reduce((r, c) => Math.max(r, c?.[ix]?.length), 0));
+                }
+                return res + (column.width ?? 1);
+            }, 0);
+            const maxAutoWidth = Math.floor(availableWidth / partCount);
+            autoWidths = autoWidths.map(o => Math.min(o, maxAutoWidth));
+            partCount -= autoWidths.length;
+            availableWidth -= autoWidths.reduce((a, b) => a + b, 0);
+            const resolvedWidths = columns.map((o, i) => {
+                const fontSize = 1;
+                let curWidth = 0;
+                if (i === columns.length - 1) {
+                    curWidth = o.width ? availableWidth : availableWidth + autoWidths.shift()!;
+                }
+                else {
+                    curWidth = o.width ? Math.floor(availableWidth * o.width / partCount) : autoWidths.shift()!;
+                }
+                const rw = Math.floor(curWidth / fontSize);
+                availableWidth -= rw * fontSize;
+                return rw;
+            });
+            const colGap = " ".repeat((option.gap?.[1] ?? 0) / charWidth);
+            let ix = 0;
+            const rowGap = option.gap?.[0];
+            let rowCount = data.length;
+            let message = "";
+            while (ix < rowCount) {
+                rowGap && ix && (message += "\n".repeat(Math.floor(rowGap / 24) - 1));
+                const row = data[ix++];
+                let hasNextItem = true;
+                let warpCount = 0;
+                while (hasNextItem) {
+                    hasNextItem = false;
+                    for (let i = 0, len = columns.length; i < len; i++) {
+                        const width = resolvedWidths[i];
+                        if (colGap && i > 0) {
+                            message += colGap;
+                        }
+                        if (!hasNextItem) {
+                            hasNextItem = (row[i] ?? "").length > (warpCount + 1) * width;
+                        }
+                        let text = (row[i] ?? "").substring(warpCount * width, width);
+                        switch (columns[i].align ?? this.currentStyle.align) {
+                            case TextAlign.right: {
+                                text = text.padStart(width, ' ');
+                                break;
+                            }
+                            case TextAlign.center: {
+                                text = text.padStart(Math.floor(width / 2), ' ').padEnd(Math.ceil(width / 2), ' ');
+                                break;
+                            }
+                            default: {
+                                text = text.padEnd(width, ' ');
+                                break;
+                            }
+                        }
+                        message += text;
+                    }
+                    message += '\n';
+                    warpCount++;
+                }
+            }
+
+            return {
+                message
+            };
+        });
+
+        this.enqueue(commandPromise);
+    }
     public openCashdrawer(): void { }
-    public printBarcode(): void { }
     public pause(): void { }
 }

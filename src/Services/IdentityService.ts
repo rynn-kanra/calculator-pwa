@@ -4,7 +4,7 @@ import { toBase64url, compare, concat, COSEKey, coseToCryptoKey, der2Raw, toUint
 import { fetchCORS } from "../Utility/fetchCORS";
 
 type AttestationObject = {
-    authData: Uint8Array,
+    authData: Uint8Array<ArrayBuffer>,
     fmt: string,
     attStmt: any
 };
@@ -16,10 +16,10 @@ type WebAuthnClientData = {
 type TPMAtestationStatement = {
     ver: string;
     alg: number;
-    x5c?: Uint8Array[];
-    sig: Uint8Array;
-    certInfo: Uint8Array;
-    pubArea: Uint8Array;
+    x5c?: Uint8Array<ArrayBuffer>[];
+    sig: Uint8Array<ArrayBuffer>;
+    certInfo: Uint8Array<ArrayBuffer>;
+    pubArea: Uint8Array<ArrayBuffer>;
 }
 type PushMessage = {
     payload: string;
@@ -37,7 +37,7 @@ const userIdentity: PublicKeyCredentialUserEntity = {
     name: "admin",
     displayName: "admin",
 };
-let challenge: Uint8Array | undefined = undefined;
+let challenge: Uint8Array<ArrayBuffer> | undefined = undefined;
 
 const vapid = {
     subject: "mailto:rynn-kanra@github.io",
@@ -187,9 +187,9 @@ class IdentityService {
 
         // Check if attested credential data is present
         const attestedCredentialDataPresent = (flags & 0x40) !== 0;
-        let aaguid: Uint8Array | undefined = undefined;
-        let credId: Uint8Array | undefined = undefined;
-        let publicKey: Uint8Array | undefined = undefined;
+        let aaguid: Uint8Array<ArrayBuffer> | undefined = undefined;
+        let credId: Uint8Array<ArrayBuffer> | undefined = undefined;
+        let publicKey: Uint8Array<ArrayBuffer> | undefined = undefined;
         if (attestedCredentialDataPresent) {
             aaguid = byteArray.slice(offset, offset + 16);
             offset += 16;

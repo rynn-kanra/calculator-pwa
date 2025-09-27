@@ -230,6 +230,13 @@ export default function Setting() {
                 <option value={'false'}>Text</option>
               </select>
             </div>
+            <div>Tipe cetakan barcode</div>
+            <div>
+              <select class='form' name="print-mode" value={o.barcodeAsImage?.toString()} onInput={(e) => { o.barcodeAsImage = e.currentTarget.value != "false"; }}>
+                <option value={'false'}>Native</option>
+                <option value={'true'}>Gambar</option>
+              </select>
+            </div>
             <div>Mode cetakan gambar</div>
             <div>
               <select class='form' name="image-mode" value={o.image} onInput={(e) => { o.image = e.currentTarget.value as ImagePrintMode; }}>

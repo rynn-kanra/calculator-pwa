@@ -243,14 +243,14 @@ export default function Calculator() {
     }
 
     if (setting.printOperator) {
-      shared.printer?.printGrid({
+      shared.printer?.printGrid([[text, isMult ? '' : '+']], {
         columns: [{
           width: 1
         }, {
           align: TextAlign.right
         }],
-        gap: [0, 5]
-      }, [[text, isMult ? '' : '+']]);
+        gap: [0, 1]
+      });
     }
     else {
       shared.printer?.printLine(text);
@@ -259,14 +259,14 @@ export default function Calculator() {
     if (isMult) {
       let multSumText = "=" + formatNumber(sum || 0);
       if (setting.printOperator) {
-        shared.printer?.printGrid({
+        shared.printer?.printGrid([[multSumText, '+']], {
           columns: [{
             width: 1
           }, {
             align: TextAlign.right
           }],
-          gap: [0, 5]
-        }, [[multSumText, '+']]);
+          gap: [0, 1]
+        });
       }
       else {
         shared.printer?.printLine(multSumText);
@@ -333,7 +333,7 @@ export default function Calculator() {
         shared.printer?.printSeparator("-");
         let resultText = formatNumber(result);
         if (setting.printOperator) {
-          shared.printer?.printGrid({
+          shared.printer?.printGrid([[resultText, '∗']], {
             columns: [{
               width: 1,
               font: { fontStyle: FontMode.bold }
@@ -341,8 +341,8 @@ export default function Calculator() {
               align: TextAlign.right,
               font: { fontStyle: FontMode.bold }
             }],
-            gap: [0, 5]
-          }, [[resultText, '∗']]);
+            gap: [0, 1]
+          });
         }
         else {
           shared.printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
@@ -403,7 +403,7 @@ export default function Calculator() {
             shared.printer?.printSeparator("-");
             let resultText = formatNumber(resultNumb);
             if (setting.printOperator) {
-              shared.printer?.printGrid({
+              shared.printer?.printGrid([[resultText, '∗']], {
                 columns: [{
                   width: 1,
                   font: { fontStyle: FontMode.bold }
@@ -411,8 +411,8 @@ export default function Calculator() {
                   align: TextAlign.right,
                   font: { fontStyle: FontMode.bold }
                 }],
-                gap: [0, 5]
-              }, [[resultText, '∗']]);
+                gap: [0, 1]
+              });
             }
             else {
               shared.printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });

@@ -4,7 +4,7 @@ import { isDarkTheme } from "./Utility/isDarkTheme";
 import { lazy, Suspense } from "preact/compat";
 import { createHashHistory } from "history";
 import Loading from './Components/Calculator';
-import { SettingProvider, useSetting } from "./Components/SettingContext";
+import { SettingProvider } from "./Components/SettingContext";
 import './styles/button.css';
 import './Styles/Form.css';
 import './Styles/BottomPopup.css';

@@ -3,7 +3,8 @@ import { PrinterConfig } from "../Model/PrinterConfig";
 import { copy } from "../Utility/copy";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { retry } from "../Utility/retry";
-import { Barcode2DOption, Barcode1DOption, FontMode, FontStyle, IDevice, IGridOption, IPrinterService, PrintImageData, TextAlign, TextStyle } from "./IPrinterService";
+import { Barcode2DOption, Barcode1DOption, FontMode, FontStyle, IDevice, IGridOption, IPrinterService, PrintImageData, TextAlign, TextStyle, BarcodeType, BarcodeTextPosition, PDF417Option, QRCodeOption, AztecOption, DataMatrixOption } from "./IPrinterService";
+import WorkerService from "../Services/WorkerService";
 
 export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     constructor(option?: DeepPartial<PrinterConfig>, style?: DeepPartial<TextStyle>) {
@@ -100,62 +101,10 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
         const textStyle = fontStyle ? copy({ font: fontStyle }, this.currentStyle) : undefined;
         this.printLine(text, textStyle);
     }
-    public printLine(text: string | PromiseLike<string>, textStyl?: DeepPartial<TextStyle>): void {
-        const textStyle = copy(textStyl, this.currentStyle);
-        const p = Promise.resolve(text).then<PrintImageData>((text) => {
-            const imageData = this.drawCanvas((cv, ctx) => {
-                const lines = [];
-                let line = '';
-                let textHeight: number = textStyle.font.size;
-                for (let i = 0; i < text.length; i++) {
-                    const testLine = line + text[i];
-                    const metrics = ctx.measureText(testLine);
-
-                    if (metrics.width > cv.width && line !== '') {
-                        lines.push(line);
-                        line = text[i];
-                    } else {
-                        line = testLine;
-                    }
-                }
-                if (line) {
-                    lines.push(line);
-                }
-
-                const lineHeight = Math.ceil(textHeight * textStyle.lineHeight);
-                const height = lines.length * lineHeight;
-                const x = textStyle.align === TextAlign.right
-                    ? cv.width
-                    : textStyle.align == TextAlign.center
-                        ? cv.width / 2
-                        : 0;
-
-                for (let i = 0; i < lines.length; i++) {
-                    const y = i * lineHeight + Math.ceil((lineHeight - textHeight) / 2);
-                    const text = lines[i];
-                    ctx.fillText(text, x, y);
-                    if (textStyle.font.fontStyle & FontMode.underline) {
-                        const textWidth = ctx.measureText(text).width;
-                        const y2 = y + lineHeight - Math.ceil((lineHeight - textHeight) / 2);
-                        ctx.beginPath();
-
-                        const lx = textStyle.align === TextAlign.right
-                            ? x - textWidth
-                            : textStyle.align == TextAlign.center
-                                ? x - (textWidth / 2)
-                                : 0;
-
-                        ctx.moveTo(lx, y2);
-                        ctx.lineTo(lx + textWidth, y2);
-                        ctx.lineWidth = 1;
-                        ctx.strokeStyle = ctx.fillStyle;
-                        ctx.stroke();
-                    }
-                }
-
-                return height;
-            }, textStyle);
-
+    public printLine(text: string | PromiseLike<string>, textStyle?: DeepPartial<TextStyle>): void {
+        const style = copy(textStyle, this.currentStyle);
+        const p = Promise.resolve(text).then<PrintImageData>(async (text) => {
+            const imageData = await WorkerService.canvas.image.drawText(text, this.option.width, style);
             return {
                 data: imageData.data.buffer,
                 width: imageData.width,
@@ -167,29 +116,13 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     }
     public printSeparator(separator: string): void {
         const textStyle = this.currentStyle;
-        const imageData = this.drawCanvas((cv, ctx) => {
-            const textHeight = this.currentStyle.font.size;
-            const lineHeight = textHeight * textStyle.lineHeight!;
-
-            const metrics = ctx.measureText(separator);
-            const count = Math.ceil(cv.width / metrics.width);
-            const text = separator.repeat(count);
-
-            const y = Math.floor((lineHeight - textHeight) / 2);
-            const x = textStyle.align === TextAlign.right
-                ? cv.width
-                : textStyle.align == TextAlign.center
-                    ? cv.width / 2
-                    : 0;
-            ctx.fillText(text, x, y);
-            return lineHeight;
-        });
-
-        this.printImage({
-            data: imageData.data.buffer,
-            height: imageData.height,
-            width: imageData.width
-        });
+        const imageDataPromise = WorkerService.canvas.image.drawSeparator(separator, this.option.width, textStyle)
+            .then(o => ({
+                data: o.data.buffer,
+                height: o.height,
+                width: o.width
+            }));
+        this.printImage(imageDataPromise);
     }
 
     public reset(): void {
@@ -199,76 +132,13 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     public abstract cut(isFull?: boolean): void;
     public abstract lineFeed(n?: number): void;
     public feed(pt: number = 24): void {
-        const imageData = this.drawCanvas((cv, ctx) => {
-            const textHeight = pt;
-            const lineHeight = textHeight * this.currentStyle.lineHeight;
-
-            ctx.fillStyle = 'white'; // blank = white background
-            ctx.fillRect(0, 0, cv.width, lineHeight);
-            return lineHeight;
-        });
-
-        this.printImage({
-            data: imageData.data.buffer,
-            height: imageData.height,
-            width: imageData.width
-        });
-    }
-
-    protected drawCanvas(draw: (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => number, textStyle?: DeepPartial<TextStyle>): ImageData {
-        let canvas = this._canvas;
-        this._canvas = null;
-        const width = this.option.width; // Math.floor(this.option.paperWidth * this.option.dpi / 25.4);
-        const height = 100;
-        if (!canvas) {
-            canvas = document.createElement("canvas");
-            // canvas.style.position = "absolute";
-            // canvas.style.zIndex = "999";
-            // canvas.style.border = "solid black 1px";
-            // canvas.style.top = "0px";
-            // canvas.style.right = "0px";
-            // document.body.append(canvas);
-            // globalThis.canvas = canvas;
-        }
-        if (!textStyle) {
-            textStyle = this.currentStyle;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d')!;
-        ctx.fillStyle = 'black';
-        ctx.textBaseline = 'top';
-        ctx.font = `${textStyle!.font!.size}px sans-serif`;
-        if (textStyle!.font!.fontStyle! & FontMode.italic) {
-            ctx.font += " italic";
-        }
-        if (textStyle!.font!.fontStyle! & FontMode.bold) {
-            ctx.font += " bold";
-        }
-        switch (textStyle.align) {
-            case TextAlign.right: {
-                ctx.textAlign = "right";
-                break;
-            }
-            case TextAlign.center: {
-                ctx.textAlign = "center";
-                break;
-            }
-            case TextAlign.left:
-            default: {
-                ctx.textAlign = "left";
-                break;
-            }
-        }
-
-        ctx.clearRect(0, 0, width, height);
-        const finalHeight = draw(canvas, ctx);
-        const imageData = ctx.getImageData(0, 0, width, finalHeight);
-
-        this._canvas = canvas;
-
-        return imageData;
+        const imageDataPromise = WorkerService.canvas.image.drawBlank(pt, this.option.width, this.currentStyle)
+            .then(o => ({
+                data: o.data.buffer,
+                height: o.height,
+                width: o.width
+            }));
+        this.printImage(imageDataPromise);
     }
 
     public printHtml(html: string | PromiseLike<string>) {
@@ -303,42 +173,53 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
         this.printImage(p);
     }
 
-    public printGrid(option: IGridOption, data: string[][] | PromiseLike<string[][]>): void {
-        const gridStyle = [
-            'display:grid',
-            `grid-template-columns: ${option.columns.map(o => o.width ? `${o.width}fr` : 'auto').join(" ")}`,
-            `gap: ${(option.gap?.[0] ?? 0)}px ${(option.gap?.[1] ?? 0)}px`,
-            `line-height: ${this.currentStyle.lineHeight}`,
-            `font-family: sans-serif`,
-            ``
-        ];
-        const styles = option.columns.map(o => {
-            const textStyle = copy(o, this.currentStyle);
-            const alignStyle = textStyle.align == TextAlign.center ? 'center' : textStyle.align == TextAlign.right ? 'right' : 'left';
-            const styles = [
-                `text-align:${(alignStyle)}`,
-                `line-height:${textStyle.lineHeight}`,
-                `font-size:${textStyle.font.size}px`,
+    public printGrid(data: string[][] | PromiseLike<string[][]>, option?: IGridOption): void {
+        const p = Promise.resolve(data).then<string>((data) => {
+            if (!option) {
+                option = {};
+            }
+            if (!Array.isArray(option.columns)) {
+                option.columns = [];
+            }
+            const columns = Array.from(option.columns);
+            const columnDefined = columns.length > 0;
+            while (columns.length < data[0].length) {
+                columns.push({ width: +columnDefined });
+            }
+            const gridStyle = [
+                'display:grid',
+                `grid-template-columns: ${columns.map(o => o.width ? `${o.width}fr` : 'auto').join(" ")}`,
+                `gap: ${(option.gap?.[0] ?? 0)}em ${(option.gap?.[1] ?? 0)}em`,
+                `line-height: ${this.currentStyle.lineHeight}`,
+                `font-family: sans-serif`
             ];
+            const styles = columns.map(o => {
+                const textStyle = copy(o, this.currentStyle);
+                const alignStyle = textStyle.align == TextAlign.center ? 'center' : textStyle.align == TextAlign.right ? 'right' : 'left';
+                const styles = [
+                    `text-align:${(alignStyle)}`,
+                    `line-height:${textStyle.lineHeight}`,
+                    `font-size:${textStyle.font.size}px`,
+                ];
 
-            if (textStyle.font.fontStyle & FontMode.bold) {
-                styles.push(`font-weight:bold`);
-            }
-            if (textStyle.font.fontStyle & FontMode.italic) {
-                styles.push(`font-style:italic`);
-            }
-            if (textStyle.font.fontStyle & FontMode.underline) {
-                styles.push(`text-decoration:underline`);
-            }
+                if (textStyle.font.fontStyle & FontMode.bold) {
+                    styles.push(`font-weight:bold`);
+                }
+                if (textStyle.font.fontStyle & FontMode.italic) {
+                    styles.push(`font-style:italic`);
+                }
+                if (textStyle.font.fontStyle & FontMode.underline) {
+                    styles.push(`text-decoration:underline`);
+                }
 
-            return styles.join(";");
-        });
-        const p = Promise.resolve(data).then<string>((data) => `<div style='${gridStyle.join(';')}'>
-            ${data.flatMap(row => row.map((col, ix) => {
+                return styles.join(";");
+            });
+            return `<div style='${gridStyle.join(';')}'>${data.flatMap(row => row.map((col, ix) => {
                 ix = Math.min(ix, styles.length - 1);
                 return `<div style='${styles[ix]}'>${col}</div>`;
-            })).join('')}
-    </div>`);
+            })).join('')
+                }</div>`;
+        });
         this.printHtml(p);
     }
 
@@ -348,5 +229,15 @@ export abstract class PrinterServiceBase<TCommand> implements IPrinterService {
     }
     public abstract printImage(data: PrintImageData | Promise<PrintImageData>): void;
     public abstract openCashdrawer(): void;
-    public abstract printBarcode(data: string | PromiseLike<string>, option?: DeepPartial<Barcode1DOption | Barcode2DOption>): void;
+
+    public printBarcode(data: string | PromiseLike<string>, option?: DeepPartial<Barcode1DOption | Barcode2DOption>) {
+        const imageDataPromise = Promise.resolve(data)
+            .then(o => WorkerService.canvas.image.drawBarcode(o, option))
+            .then(o => ({
+                data: o.data.buffer,
+                height: o.height,
+                width: o.width
+            }));
+        this.printImage(imageDataPromise);
+    }
 }

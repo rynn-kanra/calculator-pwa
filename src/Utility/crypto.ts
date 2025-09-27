@@ -155,7 +155,7 @@ export function toUint8Array(buffer: ArrayBuffer | ArrayBufferView | ArrayLike<n
 
   return new Uint8Array(buffer);
 }
-export function der2Raw(der: ArrayBuffer | ArrayBufferView, size = 32): Uint8Array {
+export function der2Raw(der: ArrayBuffer | ArrayBufferView, size = 32): Uint8Array<ArrayBuffer> {
   const derView = toUint8Array(der);
   let offset = 0;
 
@@ -315,7 +315,7 @@ export async function vapidJWT(endpoint: string, vapidSubject: string, vapidPriv
 }
 
 // Helper to HKDF-Expand (derive bits then slice length)
-async function hkdfExpand(hkdfKey: CryptoKey, info: Uint8Array, salt: Uint8Array, length: number) {
+async function hkdfExpand(hkdfKey: CryptoKey, info: Uint8Array<ArrayBuffer>, salt: Uint8Array<ArrayBuffer>, length: number) {
   const bits = await crypto.subtle.deriveBits(
     { name: 'HKDF', hash: 'SHA-256', salt: salt, info },
     hkdfKey, length * 8

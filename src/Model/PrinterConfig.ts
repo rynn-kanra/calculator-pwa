@@ -28,6 +28,9 @@ export class PrinterConfig {
   public get width(): number {
     return Math.ceil(this.printableWidth * this.dpi / 25.4);
   };
+  public get charPerLine(): number {
+    return this.printableWidth / 1.5;
+  };
   public get printableWidth(): number {
     switch (this.paperWidth) {
       case 80: return 72;
@@ -39,6 +42,7 @@ export class PrinterConfig {
   public autoConnect: boolean = true;
   public printerType: PrinterType = PrinterType.Bluetooth;
   public textAsImage: boolean = true;
+  public barcodeAsImage: boolean = false;
   public image: ImagePrintMode = ImagePrintMode.Rastar;
   public sharePrinter: boolean = false;
   public fontSize: number = 30;
