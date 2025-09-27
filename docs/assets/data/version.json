@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8",
+  "version": "1.0.9",
   "assets": [
     "./assets/images/icon.192.png",
     "./assets/images/icon.512.png",
@@ -10,27 +10,27 @@
   "app_files": [
     "./",
     "./manifest.json",
-    "./ASR-wmz647rg.chunk.js",
-    "./BarcodeScanner-6cqac0ba.chunk.js",
-    "./Calculator-bsy21hmt.chunk.js",
-    "./Check-wmndr5b8.chunk.js",
+    "./ASR-kmngq97e.chunk.js",
+    "./BarcodeScanner-4bd6dwmz.chunk.js",
+    "./Calculator-kcs5jbcf.chunk.js",
+    "./Check-w06rs36d.chunk.js",
     "./index-089q88sw.chunk.js",
-    "./index-5qysaaw0.chunk.js",
-    "./index-bqwxkdfm.chunk.js",
+    "./index-0pwdr63a.chunk.js",
+    "./index-4qzys2m0.chunk.js",
+    "./index-5ztkcgcw.chunk.js",
+    "./index-a2ag3cbv.chunk.js",
     "./index-c035twz6.chunk.js",
+    "./index-e5yfbe8q.chunk.js",
     "./index-hf0ppsqy.chunk.js",
     "./index-m6gkxxm7.chunk.js",
     "./index-mp9c14j0.chunk.js",
     "./index-nczdj2r6.chunk.js",
-    "./index-r84mfsy3.chunk.js",
-    "./index-rc9q23xw.chunk.js",
+    "./index-t4ts98cf.chunk.js",
     "./index-vc4xx6nr.chunk.js",
-    "./index-vhpk8f9y.chunk.js",
     "./index-ygd05jk1.chunk.js",
-    "./index-yvpj73g8.chunk.js",
     "./index.css",
     "./index.js",
-    "./OCR-e9nr49rz.chunk.js",
-    "./Setting-6ycb917e.chunk.js"
+    "./OCR-na3kvap0.chunk.js",
+    "./Setting-y3ffqgxx.chunk.js"
   ]
 }

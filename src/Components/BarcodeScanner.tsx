@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useSetting } from './SettingContext';
+import { BarcodeData, IBarcodeService } from '../Services/BarcodeService/IBarcodeService';
+import { KeyboardBarcodeService } from '../Services/BarcodeService/KeyboardBarcodeService';
+import { CameraBarcodeService } from '../Services/BarcodeService/CameraBarcodeService';
+import { BarcodeScannerEngine } from '../Model/CalculatorConfig';
 
 const BarcodeScanner = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const modalRef = useRef<HTMLDialogElement>(null);
-  const playRef = useRef<() => void>(null);
-  const [result, setResult] = useState<DetectedBarcode>();
+  const barcodeScannerRef = useRef<IBarcodeService>(null);
+  const [result, setResult] = useState<BarcodeData>();
   const [isCameraOn, setCameraOn] = useState<boolean>(false);
-  const [, , hapticFeedback] = useSetting();
+  const [setting, , hapticFeedback] = useSetting();
 
   // Define box dimensions (in % relative to video)
   const box = {
@@ -36,112 +39,37 @@ const BarcodeScanner = () => {
   box.y = box.y * 0.5;
 
   useEffect(() => {
-    if (!('BarcodeDetector' in window)) {
-      alert('BarcodeDetector is not supported.');
-      return;
-    }
-
-    let animationFrame: number;
-    const detector = new BarcodeDetector();
-    const detectBarcode = async () => {
-      let continueDetect = true;
-      try {
-        if (!videoRef.current) return;
-        if (!canvasRef.current) return;
-
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-
-        const videoRect = video.getBoundingClientRect();
-        const videoAspect = video.videoWidth / video.videoHeight;
-        const visibleAspect = videoRect.width / videoRect.height;
-
-        let width, height, offsetX = 0, offsetY = 0;
-        if (visibleAspect > videoAspect) {
-          width = video.videoWidth;
-          height = video.videoWidth / visibleAspect;
-          offsetY = (video.videoHeight - height) / 2;
-        }
-        else {
-          height = video.videoHeight;
-          width = video.videoHeight * visibleAspect;
-          offsetX = (video.videoWidth - width) / 2;
-        }
-
-        // Coordinates in pixels
-        const sx = width * box.x + offsetX;
-        const sy = height * box.y + offsetY;
-        const sw = width * box.width;
-        const sh = height * box.height;
-
-        canvas.width = sw;
-        canvas.height = sh;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
-
-        const barcodes = await detector.detect(canvas);
-        if (barcodes.length > 0) {
-          const code = barcodes[0].rawValue;
-          if (code) {
-            hapticFeedback();
-            setResult(barcodes[0]);
-            modalRef.current?.showModal();
-            videoRef.current?.pause();
-            setCameraOn(false);
-            continueDetect = false;
-            return;
-          }
-        }
-      } catch (err) {
-        console.error('Barcode detection failed', err);
+    switch (setting.barcodeScannerEngine) {
+      case BarcodeScannerEngine.keyboard_mode: {
+        barcodeScannerRef.current = new KeyboardBarcodeService({
+          target: document.body
+        });
+        break;
       }
-      finally {
-        if (continueDetect) {
-          playRef.current?.();
-        }
+      case BarcodeScannerEngine.camera:
+      default: {
+        barcodeScannerRef.current = new CameraBarcodeService({
+          video: videoRef.current!,
+          box: box
+        });
       }
     }
-    playRef.current = () => {
-      if (videoRef.current?.paused) {
-        videoRef.current.play();
-      }
 
+    barcodeScannerRef.current.connect().then(() => {
       setCameraOn(true);
-      setTimeout(function () {
-        cancelAnimationFrame(animationFrame);
-        animationFrame = requestAnimationFrame(() => detectBarcode());
-      }, 300);
-    };
-    const stopScanner = () => {
-      cancelAnimationFrame(animationFrame);
-      if (videoRef.current?.srcObject instanceof MediaStream) {
-        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
-    };
-    // Start video stream on mount
-    navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "environment",
-        zoom: {
-          ideal: 1
-        },
-        focusMode: "continuous"
-      }
-    })
-      .then(stream => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          setCameraOn(true);
-          detectBarcode();
+      (async () => {
+        for await (const data of barcodeScannerRef.current!) {
+          hapticFeedback();
+          barcodeScannerRef.current?.disconnect();
+          setResult(data);
+          modalRef.current?.showModal();
+          setCameraOn(false);
         }
-      })
-      .catch(err => {
-        console.error('Error accessing camera:', err);
-      });
+      })();
+    });
 
     return () => {
-      stopScanner();
+      barcodeScannerRef.current?.dispose();
     }
   }, []);
 
@@ -158,14 +86,14 @@ const BarcodeScanner = () => {
 
   const onContinue = () => {
     hapticFeedback();
-    playRef.current?.();
+    barcodeScannerRef.current?.connect();
     modalRef.current?.close();
+    setCameraOn(true);
   }
 
   const edgeSize = Math.round(size / 10);
   return (
     <div style={{ height: '100dvh', width: "100dvw", position: "relative", viewTransitionName: "view-scale" }}>
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
       <video ref={videoRef} autoPlay playsInline style={{
         width: '100%',
         backgroundColor: 'black',
@@ -237,7 +165,7 @@ const BarcodeScanner = () => {
       <dialog ref={modalRef} style={{ margin: "0 auto", top: `${(box.y + box.height / 4) * 100}%`, maxWidth: `${(box.width - 0.1) * 100}%` }}>
         <div>
           <p style={{ margin: 0, textTransform: "uppercase" }}>FORMAT: {result?.format}</p>
-          <p style={{ margin: 0, overflowWrap: "break-word" }}>{result?.rawValue}</p>
+          <p style={{ margin: 0, overflowWrap: "break-word" }}>{result?.value}</p>
         </div>
         <div style={{ textAlign: "right", marginTop: '1rem' }}>
           <button class="btn-small" style={{ color: "white", backgroundColor: "#4caf50", borderColor: "#4caf50", margin: 0 }} onClick={onContinue}>CONTINUE</button>

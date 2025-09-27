@@ -10,10 +10,21 @@ import { TextStyle, TextAlign, FontMode, AztecOption, Barcode1DOption, Barcode2D
 import { DeepPartial } from "../Utility/DeepPartial";
 import { expose, proxy, transfer } from "comlink";
 
+type RectBox = {
+    x: number,
+    y: number,
+    width: number,
+    height: number
+};
+
+// NOTE: bwip-js need this workaround to run in worker
 (globalThis as any).HTMLCanvasElement = OffscreenCanvas;
+
 let sharedCanvas: OffscreenCanvas | undefined = undefined;
+
 const silentData = new Uint8Array([128, 0, 0, 0, 128]);
 let BarcodeMap: Map<number, (opts: BwipJs.RenderOptions, drawing: BwipJs.DrawingContext<any>) => OffscreenCanvas> | undefined;
+
 class AudioVisual {
     private _ctx: OffscreenCanvasRenderingContext2D;
     constructor(public canvas: OffscreenCanvas) {
@@ -49,6 +60,7 @@ class AudioVisual {
         this._ctx.stroke();
     }
 }
+
 class PrinterImageGenerator {
     public drawBlank(pt: number, width: number, textStyle: TextStyle) {
         return this.drawCanvas(width, textStyle, (cv, ctx) => {
@@ -387,11 +399,41 @@ class PrinterImageGenerator {
     }
 }
 
-export default expose({
-    getAudioVisual: function (cv: OffscreenCanvas) {
-        return proxy(new AudioVisual(cv));
-    },
+export class BarcodeScanner {
+    private _detector?: BarcodeDetector;
+    constructor(options?: { formats?: string[] }) {
+        if (!('BarcodeDetector' in globalThis)) {
+            (globalThis as any).BarcodeDetector = function () {
+                this.detect = () => [{
+                    rawValue: "testing",
+                    format: "test"
+                }];
+            };
+        }
+        this._detector = new BarcodeDetector(options);
+    }
+    public async detect(bitmap: ImageBitmapSource, box?: RectBox, visibleAspect?: number) {
+        if (!this._detector) {
+            return;
+        }
+
+        if (box) {
+            const blob = await imageProcessor.crop(bitmap, box, visibleAspect);
+            bitmap = await createImageBitmap(blob);
+        }
+        else if (!(bitmap instanceof ImageBitmap)) {
+            bitmap = await createImageBitmap(bitmap);
+        }
+
+        const result = await this._detector.detect(bitmap);
+        return result[0];
+    }
+}
+
+const imageProcessor = {
+    AudioVisual: proxy(AudioVisual),
     image: proxy(new PrinterImageGenerator()),
+    BarcodeScanner: proxy(BarcodeScanner),
     async resize(input: Blob, maxSize = 960): Promise<Blob> {
         const img = await createImageBitmap(input)
         const scale = Math.min(maxSize / img.width, maxSize / img.height, 1); // only downscale
@@ -399,7 +441,9 @@ export default expose({
             return transfer(input, [input]);
         }
 
-        let canvas = sharedCanvas ?? new OffscreenCanvas(0, 0);
+        const canvas = sharedCanvas ?? new OffscreenCanvas(0, 0);
+        sharedCanvas = undefined;
+
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
         const ctx = canvas.getContext('2d')!;
@@ -409,6 +453,51 @@ export default expose({
             quality: 0.8
         });
 
+        if (!sharedCanvas) {
+            sharedCanvas = canvas;
+        }
+        return transfer(result, [result]);
+    },
+    async crop(input: ImageBitmapSource, box: RectBox, visibleAspect?: number): Promise<Blob> {
+        const img = input instanceof ImageBitmap ? input : await createImageBitmap(input);
+        const canvas = sharedCanvas ?? new OffscreenCanvas(0, 0);
+        sharedCanvas = undefined;
+
+        let width = img.width, height = img.height, offsetX = 0, offsetY = 0;
+        if (visibleAspect) {
+            const videoAspect = img.width / img.height;
+            if (visibleAspect > videoAspect) {
+                width = img.width;
+                height = img.width / visibleAspect;
+                offsetY = (img.height - height) / 2;
+            }
+            else {
+                height = img.height;
+                width = img.height * visibleAspect;
+                offsetX = (img.width - width) / 2;
+            }
+        }
+
+        // Coordinates in pixels
+        const sx = width * box.x + offsetX;
+        const sy = height * box.y + offsetY;
+        const sw = width * box.width;
+        const sh = height * box.height;
+
+        canvas.width = sw;
+        canvas.height = sh;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        const result = await canvas.convertToBlob({
+            type: 'image/webp'
+        });
+
+        if (!sharedCanvas) {
+            sharedCanvas = canvas;
+        }
+
         return transfer(result, [result]);
     }
-});
+};
+
+export default expose(imageProcessor);

@@ -3,9 +3,9 @@ import { expose } from "comlink";
 
 const instance = await Ocr.create({
     models: {
-        detectionPath: './assets/models/paddleocr-en/det.onnx',
-        recognitionPath: './assets/models/paddleocr-en/rec.onnx',
-        dictionaryPath: './assets/models/paddleocr-en/dictionary.txt'
+        detectionPath: '../assets/models/paddleocr-en/det.onnx',
+        recognitionPath: '../assets/models/paddleocr-en/rec.onnx',
+        dictionaryPath: '../assets/models/paddleocr-en/dictionary.txt'
     },
     onnxOptions: {
         executionProviders: ['webnn', 'webgpu', 'wasm'],

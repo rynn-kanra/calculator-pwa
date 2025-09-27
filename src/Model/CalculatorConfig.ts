@@ -18,6 +18,12 @@ export enum OCREngine {
   web,
   gutenye
 }
+export enum BarcodeScannerEngine {
+  camera,
+  keyboard_mode,
+  webhid,
+  webserial
+}
 
 export class CalculatorConfig {
   public maxDecimal: number = 8;
@@ -31,6 +37,7 @@ export class CalculatorConfig {
   public sound: boolean = true;
   public layout0: Layout0 = Layout0.mode1;
   public ocrEngine: OCREngine = OCREngine.none;
+  public barcodeScannerEngine: BarcodeScannerEngine = BarcodeScannerEngine.camera;
   public autoUpdate: AutoUpdateMode = AutoUpdateMode.silent;
   public defaultConfig: PrinterConfig = new PrinterConfig();
   public printerConfig: { [key: string]: PrinterConfig } = {};
