@@ -50,7 +50,7 @@ export default function ASR() {
       let isSilent = true;
 
       const offCanvas = canvasRef.current!.transferControlToOffscreen();
-      const audioVisualizer = await WorkerService.canvas.getAudioVisual(transfer(offCanvas, [offCanvas]));
+      const audioVisualizer = await new WorkerService.canvas.AudioVisual(transfer(offCanvas, [offCanvas]));
       visualize.current = (isStart?: boolean) => {
         if (!isStart) {
           if (typeof intervalId !== "number") {

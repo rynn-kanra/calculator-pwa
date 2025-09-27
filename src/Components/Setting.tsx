@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { AutoUpdateMode, Layout0, OCREngine } from '../Model/CalculatorConfig';
+import { AutoUpdateMode, BarcodeScannerEngine, Layout0, OCREngine } from '../Model/CalculatorConfig';
 import { ImagePrintMode, PrinterType } from '../Model/PrinterConfig';
 import { TextAlign } from '../PrinterService/IPrinterService';
 import DownloadService from '../Services/DownloadService';
@@ -457,6 +457,12 @@ export default function Setting() {
         <div class="input-container">
           <select class='form' name="ocr-engine" value={data.ocrEngine} onInput={(e) => data.ocrEngine = parseInt(e.currentTarget.value)}>
             {Object.entries(OCREngine).filter(([, value]) => value !== OCREngine.none && typeof value === "number").map(([name, value]) => (<option value={value}>{name.replaceAll('_', ' ').toLocaleUpperCase()}</option>))}
+          </select>
+        </div>
+        <div>Tipe Barcode Scanner</div>
+        <div class="input-container">
+          <select class='form' name="barcode-scanner-engine" value={data.barcodeScannerEngine} onInput={(e) => data.barcodeScannerEngine = parseInt(e.currentTarget.value)}>
+            {Object.entries(BarcodeScannerEngine).filter(([, value]) => [BarcodeScannerEngine.webhid, BarcodeScannerEngine.webserial].indexOf(value as any) === -1 && typeof value === "number").map(([name, value]) => (<option value={value}>{name.replaceAll('_', ' ').toLocaleUpperCase()}</option>))}
           </select>
         </div>
         <div style={{

@@ -23,5 +23,5 @@ declare var TextDetector: {
 };
 declare var BarcodeDetector: {
   prototype: BarcodeDetector;
-  new(): BarcodeDetector;
+  new(options?: { formats?: string[] }): BarcodeDetector;
 };
