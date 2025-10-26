@@ -1,7 +1,7 @@
-import { OCRServiceBase } from "./OCRService";
-import WorkerService from "../WorkerService";
 import type GutenyeWorker from "../../Workers/GutenyeWorker";
 import type { Remote, UnProxyMarked } from "comlink";
+import { OCRServiceBase } from "./OCRService";
+import WorkerService from "../WorkerService";
 
 export class GutenyeOCRService extends OCRServiceBase {
     private _engine?: Remote<UnProxyMarked<typeof GutenyeWorker>>;

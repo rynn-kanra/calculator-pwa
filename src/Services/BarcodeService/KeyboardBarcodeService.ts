@@ -1,4 +1,4 @@
-import { parseAIM } from "../../Utility/barcode-parser";
+import { parseAIM } from "../../Utility/barcode-parser/parser";
 import { copy } from "../../Utility/copy";
 import { DeepPartial } from "../../Utility/DeepPartial";
 import { defer, DeferPromise } from "../../Utility/defer";
@@ -145,9 +145,9 @@ export class KeyboardBarcodeService implements IBarcodeService {
 
             // detect AIM
             const aimResult = parseAIM(data);
-            if (aimResult.aim) {
+            if (aimResult.data) {
                 data = aimResult.value;
-                format = aimResult.aim.format;
+                format = aimResult.data.format;
             }
 
             this.#option.defer?.resolve({
