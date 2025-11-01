@@ -20,10 +20,10 @@
   },
   "dependencies": {
     "@gutenye/ocr-browser": "^1.4.8",
+    "@leoc11/comlink": "^4.4.2-fork.1",
     "@preact/compat": "^18.3.1",
     "@types/html2canvas": "^1.0.0",
     "cbor-x": "^1.6.0",
-    "comlink": "^4.4.2",
     "history": "^5.3.0",
     "html2canvas": "^1.4.1",
     "idb": "^8.0.3",

@@ -8,7 +8,7 @@ import {
 } from '@bwip-js/browser';
 import { TextStyle, TextAlign, FontMode, AztecOption, Barcode1DOption, Barcode2DOption, BarcodeTextPosition, BarcodeType, DataMatrixOption, PDF417Option, QRCodeOption } from "../PrinterService/IPrinterService";
 import { DeepPartial } from "../Utility/DeepPartial";
-import { expose, proxy, transfer } from "comlink";
+import { expose, proxy, transfer } from "@leoc11/comlink";
 
 type RectBox = {
     x: number,

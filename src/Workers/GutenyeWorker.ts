@@ -1,5 +1,5 @@
 import Ocr from "@gutenye/ocr-browser";
-import { expose } from "comlink";
+import { expose } from "@leoc11/comlink";
 
 const instance = await Ocr.create({
     models: {

@@ -1,5 +1,5 @@
 import type GutenyeWorker from "../../Workers/GutenyeWorker";
-import type { Remote, UnProxyMarked } from "comlink";
+import type { Remote, UnProxyMarked } from "@leoc11/comlink";
 import { OCRServiceBase } from "./OCRService";
 import WorkerService from "../WorkerService";
 

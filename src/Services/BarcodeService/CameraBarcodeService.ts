@@ -1,6 +1,6 @@
 import type { BarcodeData, IBarcodeService } from "./IBarcodeService";
 import type { BarcodeScanner } from "../../Workers/CanvasWorker";
-import { Remote, transfer } from "comlink";
+import { Remote, transfer } from "@leoc11/comlink";
 import { copy } from "../../Utility/copy";
 import WorkerService from "../WorkerService";
 import { defer, DeferPromise } from "../../Utility/defer";

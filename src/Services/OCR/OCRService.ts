@@ -1,4 +1,4 @@
-import { transfer } from "comlink";
+import { transfer } from "@leoc11/comlink";
 import WorkerService from "../WorkerService";
 
 export interface IOCRService {
