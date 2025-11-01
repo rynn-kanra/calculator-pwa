@@ -5,7 +5,7 @@ import { CalcParser } from '../Services/MathLanguageParser';
 import { route } from 'preact-router';
 import { useSetting } from './SettingContext';
 import WorkerService from '../Services/WorkerService';
-import { transfer } from 'comlink';
+import { transfer } from '@leoc11/comlink';
 
 let speechService: SpeechService | undefined = undefined;
 

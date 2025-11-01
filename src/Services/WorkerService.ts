@@ -1,4 +1,4 @@
-import { wrap } from "comlink";
+import { wrap } from "@leoc11/comlink";
 import { lazy } from "../Utility/lazy";
 import type CanvasWorker from "../Workers/CanvasWorker";
 import type GutenyeWorker from "../Workers/GutenyeWorker";
