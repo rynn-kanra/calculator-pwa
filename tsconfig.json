@@ -3,12 +3,32 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
     "strict": true,
     "esModuleInterop": true,
+    "noEmit": true,
+    "allowJs": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["ESNext", "WebWorker", "DOM", "DOM.Iterable"]
+    "allowImportingTsExtensions": true,
+    "lib": [
+      "ESNext",
+      "WebWorker",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "bun",
+      "dom-serial",
+      "w3c-web-hid",
+      "w3c-web-usb",
+      "web",
+      "web-bluetooth"
+    ]
   },
-  "include": ["src", "types/**/*.d.ts"],
+  "include": [
+    "src",
+    "types/**/*.d.ts"
+  ],
 }
