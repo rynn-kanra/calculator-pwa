@@ -46,6 +46,7 @@ export class PrinterConfig {
   public image: ImagePrintMode = ImagePrintMode.Rastar;
   public sharePrinter: boolean = false;
   public fontSize: number = 30;
+  public sessionFeedHeight: number = 24;
   public fontFace: number = 0;
   public lineHeight: number = 1;
   public paperWidth: number = 58;

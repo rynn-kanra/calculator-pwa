@@ -223,6 +223,10 @@ export default function Setting() {
             <div>
               <input class='form' type='number' name="font-size" step="2" min="12" max="72" value={data.defaultConfig.fontSize} onInput={(e) => { data.defaultConfig.fontSize = parseInt(e.currentTarget.value); }} />
             </div>
+            <div>Jarak tiap sesi</div>
+            <div>
+              <input class='form' type='number' name="font-size" step="2" min="12" max="72" value={data.defaultConfig.sessionFeedHeight ?? "24"} onInput={(e) => { data.defaultConfig.sessionFeedHeight = parseInt(e.currentTarget.value); }} />
+            </div>
             <div>Tipe cetakan text</div>
             <div>
               <select class='form' name="print-mode" value={o.textAsImage?.toString()} onInput={(e) => { o.textAsImage = e.currentTarget.value != "false"; }}>

@@ -418,7 +418,7 @@ export default function Calculator() {
               shared.printer?.printLine(resultText, { font: { fontStyle: FontMode.bold } });
             }
             shared.printer?.printSeparator("=");
-            shared.printer?.lineFeed(1);
+            shared.printer?.feed(shared.printer?.option.sessionFeedHeight ?? 24);
             if (shared.printer?.option.sharePrinter) {
               shared.printer?.pause();
             }
