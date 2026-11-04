@@ -4,28 +4,6 @@ import IminPrinter from "../lib/imin-printer.esm.browser";
 import { DeepPartial } from "../Utility/DeepPartial";
 import { PrinterConfig } from "../Model/PrinterConfig";
 
-type iminPrinter = {
-    connected: boolean;
-    reconnect: () => Promise<boolean>;
-    connect: () => Promise<boolean>;
-    close: () => void;
-    initPrinter: () => void;
-    printAndLineFeed: () => void;
-    printAndFeedPaper: (height: number) => void;
-    getPrinterStatus: () => Promise<{ value: number }>;
-    printText: (str: string, type?: number) => void;
-    printColumnsText: (colTextArr: string[], colWidthArr: number[], colAlign: number[], fontSize: number[], width: number) => void;
-    setTextSize: (size?: number) => void;
-    setTextTypeface: (size?: number) => void;
-    setTextStyle: (size?: number) => void;
-    setTextWidth: (size?: number) => void;
-    setAlignment: (alignment: number) => void;
-    partialCut: () => void;
-    printSingleBitmap: (data: string) => void;
-    openCashBox: () => void;
-    ws?: WebSocket;
-} | null;
-
 const resolvedPromise = Promise.resolve();
 // DOC: https://oss-sg.imin.sg/docs/en/JSPrinterSDK.html
 export class IminPrinterService extends PrinterServiceBase<() => void> {
@@ -33,7 +11,7 @@ export class IminPrinterService extends PrinterServiceBase<() => void> {
         super(option, style);
     }
 
-    private _instance: iminPrinter | null = null;
+    private _instance: IminPrinter | null = null;
     public execute(command: () => void): Promise<void> {
         command();
         return resolvedPromise;
