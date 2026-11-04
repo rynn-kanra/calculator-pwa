@@ -225,7 +225,7 @@ export default function Setting() {
             </div>
             <div>Jarak tiap sesi</div>
             <div>
-              <input class='form' type='number' name="font-size" step="2" min="12" max="72" value={data.defaultConfig.sessionFeedHeight ?? "24"} onInput={(e) => { data.defaultConfig.sessionFeedHeight = parseInt(e.currentTarget.value); }} />
+              <input class='form' type='number' name="font-size" step="2" min="2" max="100" value={data.defaultConfig.sessionFeedHeight ?? "24"} onInput={(e) => { data.defaultConfig.sessionFeedHeight = parseInt(e.currentTarget.value); }} />
             </div>
             <div>Tipe cetakan text</div>
             <div>
