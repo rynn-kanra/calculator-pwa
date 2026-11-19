@@ -6,7 +6,7 @@
       "name": "calculator",
       "dependencies": {
         "@gutenye/ocr-browser": "^1.4.9",
-        "@leoc11/comlink": "^4.4.2-fork.1",
+        "@leoc11/comlink": "^4.4.2-fork.3",
         "@preact/compat": "^18.3.2",
         "@types/html2canvas": "^1.0.0",
         "cbor-x": "^1.6.9",
@@ -52,7 +52,7 @@
 
     "@gutenye/ocr-models": ["@gutenye/ocr-models@1.4.2", "", {}, "sha512-y7cLEpGFOeroavopfCd/ejyZB/UeF6xdn0mBFqVHNOI5wQTv2My+/nKxvxKTtG4DVMBzt9TpOfaX7aZGbuciUw=="],
 
-    "@leoc11/comlink": ["@leoc11/comlink@4.4.2-fork.1", "", {}, "sha512-us/EXROpx+J5pORop9GiC+ch84sDBi9itgOXUNvdRk0Afay5v9jtF1YV+7Th1ZV/drlxPxo28IGB220jTDllbQ=="],
+    "@leoc11/comlink": ["@leoc11/comlink@4.4.2-fork.3", "", {}, "sha512-iqZunXqx4MRCwIr/G9F2yTPkGLCT5H8zi5twpAQiKeDvLEb0w7rNTlAgiRPPXcf6RlKXsNx0D0cwZd0G+GNXlA=="],
 
     "@preact/compat": ["@preact/compat@18.3.2", "", { "peerDependencies": { "preact": "*" } }, "sha512-5vSl55K5yLMvocT7PBKxDOHGgYPjMrKQqqr6roSNjIXcJOtSgDDMjpiCAF3s7klRdmGrN75b/Przmjw8gmlg/w=="],
 
